@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getDisplayOrderId } from '../lib/orderId';
 
 interface OrderItem {
   id?: number | string;
@@ -459,7 +460,7 @@ const AdminOrders: React.FC = () => {
                       return (
                       <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-sans">
-                          #{order.id}
+                          #{getDisplayOrderId(order.id)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-sans">
                           {formatDate(order.created_at || order.createdAt)}
@@ -522,7 +523,7 @@ const AdminOrders: React.FC = () => {
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-2xl font-serif font-bold text-gray-900">
-                Order Details #{selectedOrder.id}
+                Order Details #{getDisplayOrderId(selectedOrder.id)}
               </h2>
               <button
                 onClick={handleCloseModal}

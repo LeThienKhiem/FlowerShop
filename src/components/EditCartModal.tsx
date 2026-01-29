@@ -352,19 +352,6 @@ const EditCartModal: React.FC<EditCartModalProps> = ({ isOpen, onClose, item, on
           </div>
         )}
 
-        {/* Message Textarea */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide mb-2 font-sans">
-            Card Message
-          </label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Message to the recipient!"
-            className="w-full p-4 border-2 border-stone-200 rounded mt-2 h-32 resize-none focus:outline-none focus:border-stone-900 transition-colors placeholder:text-gray-400 font-sans"
-          />
-        </div>
-
         {/* Actions */}
         <div className="flex gap-4 justify-end">
           <button

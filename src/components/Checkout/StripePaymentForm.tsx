@@ -160,12 +160,21 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
     [clientSecret, appearance]
   );
 
-  if (!clientSecret) {
+  if (!clientSecret || clientSecret.length === 0) {
+    console.warn('[StripeElements] Skipping render: missing clientSecret');
     return null;
   }
 
+  console.log('[StripeElements] Rendering', {
+    clientSecretPrefix: `${clientSecret.slice(0, 6)}...`,
+    clientSecretLength: clientSecret.length,
+    clientSecretHasSecret: clientSecret.includes('_secret_'),
+    publishableKeyPrefix: (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '').slice(0, 7),
+  });
+
   return (
     <Elements
+      key={clientSecret}
       stripe={stripePromise}
       options={elementsOptions}
     >

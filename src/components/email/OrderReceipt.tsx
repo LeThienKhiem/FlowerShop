@@ -1,6 +1,7 @@
 import React from 'react';
 import { CartItem } from '../../context/CartContext';
 import { OrderData } from '../../lib/email';
+import { getDisplayOrderId } from '../../lib/orderId';
 
 interface RecipientInfo {
   name?: string;
@@ -57,6 +58,7 @@ const renderOptionValue = (value: any): string => {
 };
 
 const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
+  const displayOrderId = getDisplayOrderId(order.id);
   const headerStyle: React.CSSProperties = {
     backgroundColor: '#D87BB0',
     color: '#ffffff',
@@ -109,7 +111,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
   return (
     <div style={{ backgroundColor: '#f3f4f6', padding: '24px 0' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto', backgroundColor: '#ffffff', border: '1px solid #eee' }}>
-        <div style={headerStyle}>New Order: #{order.id}</div>
+        <div style={headerStyle}>New Order: #{displayOrderId}</div>
         <div style={sectionStyle}>
         <table style={tableStyle}>
           <thead>

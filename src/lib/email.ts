@@ -1,6 +1,7 @@
 import emailjs from '@emailjs/browser';
 import { CartItem } from '../context/CartContext';
 import { SIZE_OPTIONS } from './constants';
+import { getDisplayOrderId } from './orderId';
 
 // EmailJS configuration constants
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || '';
@@ -134,7 +135,7 @@ export const sendOrderEmails = async (orderData: OrderData): Promise<void> => {
 
     // Build template parameters matching the EmailJS template structure
     const templateParams = {
-      order_id: String(orderData.id),
+      order_id: String(getDisplayOrderId(orderData.id)),
       email: orderData.email,
       to_name: `${orderData.firstName ?? ''} ${orderData.lastName ?? ''}`.trim() || 'Customer',
       total_amount: orderData.totalFormatted,

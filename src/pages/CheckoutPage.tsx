@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useShopDates } from '../hooks/useShopDates';
 import PostcodeCombobox, { DELIVERY_ZONES } from '../components/ui/PostcodeCombobox';
 import NewOrderEmail from '../emails/NewOrderEmail';
+import { getDisplayOrderId } from '../lib/orderId';
 
 // Address data interface
 interface AddressData {
@@ -27,6 +28,13 @@ interface CouponData {
   discount_type: string;
   value: number;
 }
+
+type SecurityLogEntry = {
+  id: number;
+  timestamp: string;
+  action: string;
+  details?: Record<string, unknown>;
+};
 
 interface OrderInfoPreviewProps {
   className?: string;
@@ -50,6 +58,7 @@ interface PaymentActionsProps {
   discountAmount: number;
   finalTotal: number;
   totalGST: number;
+  isFormValid: boolean;
   hasOtherState: boolean;
   isPaymentLoading: boolean;
   paymentError: string | null;
@@ -169,6 +178,7 @@ const PaymentActions: React.FC<PaymentActionsProps> = ({
   discountAmount,
   finalTotal,
   totalGST,
+  isFormValid,
   hasOtherState,
   isPaymentLoading,
   paymentError,
@@ -242,68 +252,74 @@ const PaymentActions: React.FC<PaymentActionsProps> = ({
 
     <div className="border-t border-stone-200 my-6"></div>
 
-    <div className="rounded-xl border border-stone-200 bg-white shadow-sm mt-6">
-      <div className="px-6 py-4 border-b border-stone-200">
-        <h2 className="text-lg font-semibold text-stone-900">Payment Method</h2>
-      </div>
-      <div className="px-6 pb-6 pt-5">
-        {hasOtherState ? (
-          <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800 font-sans mb-2">
-              <strong>Order cannot be placed online</strong> for deliveries outside Victoria. Please contact us to arrange your order.
-            </p>
-            <div className="space-y-1 text-sm text-amber-900 font-sans">
-              <p><strong>Phone:</strong> <a href={`tel:${SHOP_INFO.phone.replace(/\s/g, '')}`} className="underline hover:text-amber-700">{SHOP_INFO.phone}</a></p>
-              <p><strong>Email:</strong> <a href={`mailto:${SHOP_INFO.email}`} className="underline hover:text-amber-700">{SHOP_INFO.email}</a></p>
+    {isFormValid ? (
+      <div className="rounded-xl border border-stone-200 bg-white shadow-sm mt-6">
+        <div className="px-6 py-4 border-b border-stone-200">
+          <h2 className="text-lg font-semibold text-stone-900">Payment Method</h2>
+        </div>
+        <div className="px-6 pb-6 pt-5">
+          {hasOtherState ? (
+            <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800 font-sans mb-2">
+                <strong>Order cannot be placed online</strong> for deliveries outside Victoria. Please contact us to arrange your order.
+              </p>
+              <div className="space-y-1 text-sm text-amber-900 font-sans">
+                <p><strong>Phone:</strong> <a href={`tel:${SHOP_INFO.phone.replace(/\s/g, '')}`} className="underline hover:text-amber-700">{SHOP_INFO.phone}</a></p>
+                <p><strong>Email:</strong> <a href={`mailto:${SHOP_INFO.email}`} className="underline hover:text-amber-700">{SHOP_INFO.email}</a></p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <>
-            {isPaymentLoading && (
-              <div className="rounded-lg border border-stone-200 bg-white px-4 py-4 text-sm text-stone-700 flex items-center gap-3">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-400 border-t-transparent" />
-                Initializing secure payment...
-              </div>
-            )}
-            {paymentError && !isPaymentLoading && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 space-y-3">
-                <p>{paymentError}</p>
-                <button
-                  type="button"
-                  onClick={fetchClientSecret}
-                  className="inline-flex items-center justify-center rounded-md border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
-                >
-                  Retry Payment
-                </button>
-              </div>
-            )}
-            {shouldRenderForm && clientSecret && (
-              <StripePaymentForm
-                amount={finalTotal}
-                clientSecret={clientSecret}
-                isProcessing={isPaymentLoading}
-                onSuccess={handlePaymentSuccess}
-                onValidate={() => {
-                  const requiredErrors = validateForm();
-                  setFormErrors(requiredErrors);
-                  if (Object.keys(requiredErrors).length > 0) {
-                    scrollToFirstError(requiredErrors);
-                    return false;
-                  }
-                  const validation = validateAllSteps();
-                  if (!validation.isValid) {
-                    setErrors(validation.errors);
-                    return false;
-                  }
-                  setErrors({});
-                  return true;
-                }}
-              />
-            )}
-          </>
-        )}
+          ) : (
+            <>
+              {isPaymentLoading && (
+                <div className="rounded-lg border border-stone-200 bg-white px-4 py-4 text-sm text-stone-700 flex items-center gap-3">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-stone-400 border-t-transparent" />
+                  Initializing secure payment...
+                </div>
+              )}
+              {paymentError && !isPaymentLoading && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 space-y-3">
+                  <p>{paymentError}</p>
+                  <button
+                    type="button"
+                    onClick={fetchClientSecret}
+                    className="inline-flex items-center justify-center rounded-md border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
+                  >
+                    Retry Payment
+                  </button>
+                </div>
+              )}
+              {shouldRenderForm && clientSecret && (
+                <StripePaymentForm
+                  amount={finalTotal}
+                  clientSecret={clientSecret}
+                  isProcessing={isPaymentLoading}
+                  onSuccess={handlePaymentSuccess}
+                  onValidate={() => {
+                    const requiredErrors = validateForm();
+                    setFormErrors(requiredErrors);
+                    if (Object.keys(requiredErrors).length > 0) {
+                      scrollToFirstError(requiredErrors);
+                      return false;
+                    }
+                    const validation = validateAllSteps();
+                    if (!validation.isValid) {
+                      setErrors(validation.errors);
+                      return false;
+                    }
+                    setErrors({});
+                    return true;
+                  }}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    ) : (
+      <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 font-sans text-center">
+        * Please fill in all mandatory fields (Email, Phone) to proceed to payment.
+      </div>
+    )}
   </div>
 );
 
@@ -336,6 +352,10 @@ const CheckoutPage: React.FC = () => {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const lastPaymentAmountRef = useRef<number | null>(null);
+  const hasOtherStateRef = useRef<boolean>(false);
+  const isStep2ValidRef = useRef<boolean>(false);
+  const clientSecretRef = useRef<string | null>(null);
+  const transactionIdRef = useRef<number | null>(null);
 
   console.log("🎨 [CheckoutPage Render] State:", {
     clientSecret: !!clientSecret,
@@ -360,11 +380,60 @@ const CheckoutPage: React.FC = () => {
   const [recipientLastName, setRecipientLastName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [isRecipientSameAsSender, setIsRecipientSameAsSender] = useState(true);
+  const [globalMessage, setGlobalMessage] = useState('');
+  const [itemMessages, setItemMessages] = useState<Record<string, string>>({});
   const [address, setAddress] = useState('');
   const [state, setState] = useState('VIC'); // Default to Victoria
   const [selectedPostcode, setSelectedPostcode] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryZonePrice, setDeliveryZonePrice] = useState<number | null>(null);
+
+  const getNextTransactionId = (): number => {
+    if (typeof window === 'undefined') return 7001;
+    const storageKey = 'transactionIdCounter';
+    const storedValue = window.localStorage.getItem(storageKey);
+    const currentValue = storedValue ? parseInt(storedValue, 10) : 7000;
+    const safeCurrent = Number.isFinite(currentValue) && currentValue >= 7000 ? currentValue : 7000;
+    const nextValue = safeCurrent + 1;
+    window.localStorage.setItem(storageKey, String(nextValue));
+    return nextValue;
+  };
+
+  const getCurrentTransactionId = (): number => {
+    if (!transactionIdRef.current) {
+      transactionIdRef.current = getNextTransactionId();
+    }
+    return transactionIdRef.current;
+  };
+
+  const logSecurityEvent = (action: string, details?: Record<string, unknown>) => {
+    if (typeof window === 'undefined') return;
+    const logId = getCurrentTransactionId();
+    const entry: SecurityLogEntry = {
+      id: logId,
+      timestamp: new Date().toISOString(),
+      action,
+      details,
+    };
+
+    const storageKey = 'securityLogs';
+    const storedLogs = window.localStorage.getItem(storageKey);
+    let logs: SecurityLogEntry[] = [];
+    if (storedLogs) {
+      try {
+        logs = JSON.parse(storedLogs);
+      } catch {
+        logs = [];
+      }
+    }
+    logs.push(entry);
+    const MAX_LOGS = 5000;
+    if (logs.length > MAX_LOGS) {
+      logs.splice(0, logs.length - MAX_LOGS);
+    }
+    window.localStorage.setItem(storageKey, JSON.stringify(logs));
+    console.log(`[Security Log #${logId}] ${action}`, details ?? '');
+  };
   
   // Date management hook
   const { checkIsSeasonal, checkIsClosed, getSurcharge, isDateAvailable } = useShopDates();
@@ -530,7 +599,7 @@ const CheckoutPage: React.FC = () => {
     return Object.keys(fallbackOptions).length > 0 ? fallbackOptions : null;
   };
 
-  const buildRecipientInfoFromSplit = (shipment: AddressData | undefined) => {
+  const buildRecipientInfoFromSplit = (shipment: AddressData | undefined, message?: string) => {
     if (!shipment) return null;
     const name = `${shipment.firstName ?? ''} ${shipment.lastName ?? ''}`.trim();
     return {
@@ -539,12 +608,13 @@ const CheckoutPage: React.FC = () => {
       suburb: shipment.postcode || undefined,
       state: shipment.state || undefined,
       phone: shipment.phone || undefined,
-      message: undefined,
+      message: message?.trim() || undefined,
     };
   };
 
   const buildRecipientInfoFromMain = () => {
-    if (shippingMethod !== 'delivery') return null;
+    const hasMessage = globalMessage.trim();
+    if (shippingMethod !== 'delivery' && !hasMessage) return null;
     const name = `${recipientFirstName ?? ''} ${recipientLastName ?? ''}`.trim();
     return {
       name: name || undefined,
@@ -552,8 +622,15 @@ const CheckoutPage: React.FC = () => {
       suburb: selectedPostcode || undefined,
       state: state || undefined,
       phone: recipientPhone || undefined,
-      message: undefined,
+      message: hasMessage || undefined,
     };
+  };
+
+  const updateItemMessage = (splitKey: string, value: string) => {
+    setItemMessages((prev) => ({
+      ...prev,
+      [splitKey]: value,
+    }));
   };
 
   // Helper function to get display price
@@ -621,7 +698,38 @@ const CheckoutPage: React.FC = () => {
       : state === 'OTHER'
     : false;
 
+  useEffect(() => {
+    hasOtherStateRef.current = hasOtherState;
+  }, [hasOtherState]);
+
   const isEmailValid = useMemo(() => /\S+@\S+\.\S+/.test(email), [email]);
+
+  const isFormValid = useMemo(() => {
+    const hasContact = email.trim().length > 0 && phone.trim().length > 0;
+    if (!hasContact) {
+      return false;
+    }
+
+    if (!isMultiToAddress) {
+      return true;
+    }
+
+    const splitItems = cartItems.flatMap((item) =>
+      Array.from({ length: item.quantity }, (_, index) => ({
+        key: getSplitItemKey(item, index),
+      }))
+    );
+
+    const allItemsValid = splitItems.every(({ key }) => {
+      const splitAddress = splitShipments[key];
+      const hasPhone = Boolean(splitAddress?.phone?.trim());
+      const hasState = Boolean(splitAddress?.state?.trim());
+      const hasSuburb = Boolean(splitAddress?.postcode?.trim());
+      return hasPhone && hasState && hasSuburb;
+    });
+
+    return allItemsValid;
+  }, [cartItems, email, isMultiToAddress, phone, splitShipments]);
 
   useEffect(() => {
     if (isRecipientSameAsSender) {
@@ -639,28 +747,11 @@ const CheckoutPage: React.FC = () => {
     }
   }, [isRecipientSameAsSender]);
 
-  const isRecipientComplete = useMemo(() => {
-    if (shippingMethod !== 'delivery') return true;
-    if (isMultiToAddress) return true;
-    if (!recipientFirstName || !recipientLastName) return false;
-    if (!recipientPhone || recipientPhone.trim().length < 9) return false;
-    return true;
-  }, [recipientFirstName, recipientLastName, recipientPhone, shippingMethod, isMultiToAddress]);
-
-  const isAddressComplete = useMemo(() => {
-    if (shippingMethod !== 'delivery') return true;
-    if (isMultiToAddress) return true;
-    if (!address || !state) return false;
-    if (state === 'OTHER') return false;
-    if (state === 'VIC' && (!selectedPostcode || selectedPostcode === 'other')) return false;
-    return true;
-  }, [address, selectedPostcode, shippingMethod, state, isMultiToAddress]);
-
   const areMultiDatesValid = useMemo(() => {
     if (!isMultiShipping) return true;
     return expandedItems.every(({ key: expandedKey }) => {
       const selectedDate = multiDeliveryDates[expandedKey];
-      return Boolean(selectedDate && isDateAvailable(selectedDate));
+      return !selectedDate || isDateAvailable(selectedDate);
     });
   }, [expandedItems, isDateAvailable, isMultiShipping, multiDeliveryDates]);
 
@@ -668,20 +759,22 @@ const CheckoutPage: React.FC = () => {
     if (isMultiShipping) {
       return areMultiDatesValid;
     }
-    const isDateValid = Boolean(deliveryDate && isDateAvailable(deliveryDate));
-    if (shippingMethod === 'delivery') {
-      return isDateValid && isRecipientComplete && isAddressComplete;
-    }
+    const isDateValid = !deliveryDate || isDateAvailable(deliveryDate);
     return isDateValid;
   }, [
     areMultiDatesValid,
     deliveryDate,
-    isAddressComplete,
     isDateAvailable,
     isMultiShipping,
-    isRecipientComplete,
-    shippingMethod,
   ]);
+
+  useEffect(() => {
+    isStep2ValidRef.current = isStep2Valid;
+  }, [isStep2Valid]);
+
+  useEffect(() => {
+    clientSecretRef.current = clientSecret;
+  }, [clientSecret]);
 
   const clearFormError = (field: string) => {
     setFormErrors((prev) => {
@@ -706,18 +799,8 @@ const CheckoutPage: React.FC = () => {
   const validateForm = () => {
     const newErrors: Record<string, boolean> = {};
 
-    if (!firstName.trim()) newErrors.firstName = true;
-    if (!lastName.trim()) newErrors.lastName = true;
     if (!email.trim()) newErrors.email = true;
     if (!phone.trim()) newErrors.phone = true;
-
-    if (shippingMethod === 'delivery' && !isMultiToAddress) {
-      if (!address.trim()) newErrors.address = true;
-      if (!state) newErrors.state = true;
-      if (state === 'VIC' && (!selectedPostcode || selectedPostcode === 'other')) {
-        newErrors.postcode = true;
-      }
-    }
 
     return newErrors;
   };
@@ -774,7 +857,7 @@ const CheckoutPage: React.FC = () => {
     setAppliedCoupon(coupon);
     setDiscountAmount(roundedDiscount);
     setCouponCode(trimmedCode);
-    alert('Áp dụng mã giảm giá thành công!');
+    alert('Coupon code applied successfully!');
   };
 
   const handleRemoveCoupon = () => {
@@ -789,6 +872,12 @@ const CheckoutPage: React.FC = () => {
     setPaymentError(null);
 
     try {
+      logSecurityEvent('Payment intent requested', { amountInCents });
+      console.log('[PaymentIntent] Requesting client secret', {
+        amountInCents,
+        isStep2Valid: isStep2ValidRef.current,
+        hasOtherState: hasOtherStateRef.current,
+      });
       const { data, error: invokeError } = await supabase.functions.invoke(
         'create-payment-intent',
         {
@@ -801,9 +890,29 @@ const CheckoutPage: React.FC = () => {
         throw new Error(invokeError.message || 'Unable to initialize payment.');
       }
 
+      console.log('[PaymentIntent] Response', {
+        hasClientSecret: Boolean(data?.clientSecret),
+        clientSecretPrefix: typeof data?.clientSecret === 'string'
+          ? `${data.clientSecret.slice(0, 6)}...`
+          : null,
+        clientSecretLength: typeof data?.clientSecret === 'string'
+          ? data.clientSecret.length
+          : null,
+        clientSecretHasSecret: typeof data?.clientSecret === 'string'
+          ? data.clientSecret.includes('_secret_')
+          : null,
+      });
+      logSecurityEvent('Payment intent received', {
+        amountInCents,
+        hasClientSecret: Boolean(data?.clientSecret),
+      });
       setClientSecret(data?.clientSecret ?? null);
       lastPaymentAmountRef.current = amountInCents;
     } catch (err) {
+      logSecurityEvent('Payment intent failed', {
+        amountInCents,
+        error: err instanceof Error ? err.message : String(err),
+      });
       console.error('Payment intent request failed:', err);
       setClientSecret(null);
       setPaymentError(err instanceof Error ? err.message : 'Unable to initialize payment.');
@@ -813,7 +922,14 @@ const CheckoutPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!isStep2Valid || hasOtherState) {
+    console.log('[PaymentIntent] effect', {
+      amountInCents,
+      isStep2Valid: isStep2ValidRef.current,
+      hasOtherState: hasOtherStateRef.current,
+      lastAmount: lastPaymentAmountRef.current,
+      hasClientSecret: Boolean(clientSecretRef.current),
+    });
+    if (!isStep2ValidRef.current || hasOtherStateRef.current) {
       setClientSecret(null);
       setPaymentError(null);
       return;
@@ -825,12 +941,12 @@ const CheckoutPage: React.FC = () => {
       return;
     }
 
-    if (lastPaymentAmountRef.current === amountInCents && clientSecret) {
+    if (lastPaymentAmountRef.current === amountInCents && clientSecretRef.current) {
       return;
     }
 
     fetchClientSecret();
-  }, [amountInCents, clientSecret, hasOtherState, isStep2Valid]);
+  }, [amountInCents]);
 
   // Validation function - called only when Pay button is clicked
   const validateAllSteps = (): { isValid: boolean; errors: Record<string, string>; errorStep: 1 | 2 | 3 | null } => {
@@ -848,98 +964,38 @@ const CheckoutPage: React.FC = () => {
     }
 
     if (isMultiShipping) {
-      // Validate multi-addresses (not used in single-page flow)
-      expandedItems.forEach(({ key: expandedKey, item }) => {
-        const addr = multiAddresses[expandedKey];
-        if (!addr) {
-          newErrors[`${expandedKey}-address`] = `Please fill in address for ${item.name}`;
-          if (!errorStep) errorStep = 1;
-        } else {
-          if (!addr.firstName) {
-            newErrors[`${expandedKey}-firstName`] = `First name required for ${item.name}`;
-            if (!errorStep) errorStep = 1;
-          }
-          if (!addr.lastName) {
-            newErrors[`${expandedKey}-lastName`] = `Last name required for ${item.name}`;
-            if (!errorStep) errorStep = 1;
-          }
-          if (!addr.address) {
-            newErrors[`${expandedKey}-address`] = `Address required for ${item.name}`;
-            if (!errorStep) errorStep = 1;
-          }
-          if (!addr.phone || addr.phone.trim().length < 9) {
-            newErrors[`${expandedKey}-phone`] = `Valid phone number required for ${item.name}`;
-            if (!errorStep) errorStep = 1;
-          }
-          if (addr.state === 'OTHER') {
-            newErrors[`${expandedKey}-state`] = `Cannot deliver to ${item.name} - please contact us`;
-            if (!errorStep) errorStep = 1;
-          }
-          if (addr.state === 'VIC' && (!addr.postcode || addr.postcode === 'other')) {
-            newErrors[`${expandedKey}-postcode`] = `Please select a valid postcode for ${item.name}`;
-            if (!errorStep) errorStep = 1;
-          }
-        }
-      });
-    } else {
-      // Validate sender info
-      if (!firstName) {
-        newErrors.firstName = 'First name is required';
-        if (!errorStep) errorStep = 1;
-      }
-      if (!lastName) {
-        newErrors.lastName = 'Last name is required';
-        if (!errorStep) errorStep = 1;
-      }
-    }
-
-    // Validate Step 2
-    if (isMultiShipping) {
       expandedItems.forEach(({ key: expandedKey, item }) => {
         const selectedDate = multiDeliveryDates[expandedKey];
-        if (!selectedDate) {
-          newErrors[`${expandedKey}-date`] = `Please select a delivery date for ${item.name}`;
-          if (!errorStep) errorStep = 2;
-        } else if (!isDateAvailable(selectedDate)) {
+        if (selectedDate && !isDateAvailable(selectedDate)) {
           newErrors[`${expandedKey}-date`] = `Selected date is not available for ${item.name}`;
           if (!errorStep) errorStep = 2;
         }
       });
-    } else {
-      if (shippingMethod === 'delivery' && !isMultiToAddress) {
-        if (!recipientFirstName) {
-          newErrors.recipientFirstName = 'Recipient first name is required';
+    } else if (isMultiToAddress && shippingMethod === 'delivery') {
+      const splitItems = cartItems.flatMap((item) =>
+        Array.from({ length: item.quantity }, (_, index) => ({
+          item,
+          key: getSplitItemKey(item, index),
+        }))
+      );
+      splitItems.forEach(({ key: splitKey, item }) => {
+        const splitAddress = splitShipments[splitKey];
+        if (!splitAddress?.phone || splitAddress.phone.trim().length === 0) {
+          newErrors[`${splitKey}-phone`] = `Recipient phone is required for ${item.name}`;
           if (!errorStep) errorStep = 2;
         }
-        if (!recipientLastName) {
-          newErrors.recipientLastName = 'Recipient last name is required';
+        if (!splitAddress?.state) {
+          newErrors[`${splitKey}-state`] = `State is required for ${item.name}`;
           if (!errorStep) errorStep = 2;
         }
-        if (!recipientPhone || recipientPhone.trim().length < 9) {
-          newErrors.recipientPhone = 'Valid recipient phone is required';
+        if (splitAddress?.state === 'VIC' && (!splitAddress?.postcode || splitAddress.postcode === 'other')) {
+          newErrors[`${splitKey}-postcode`] = `Suburb / postcode is required for ${item.name}`;
           if (!errorStep) errorStep = 2;
         }
-        if (!address) {
-          newErrors.address = 'Address is required';
-          if (!errorStep) errorStep = 2;
-        }
-        if (state === 'OTHER') {
-          newErrors.state = 'Cannot deliver to this location - please contact us';
-          if (!errorStep) errorStep = 2;
-        }
-        if (state === 'VIC' && (!selectedPostcode || selectedPostcode === 'other')) {
-          newErrors.postcode = 'Please select a valid postcode';
-          if (!errorStep) errorStep = 2;
-        }
-      }
-
-      if (!deliveryDate) {
-        newErrors.deliveryDate = `Please select a ${shippingMethod === 'delivery' ? 'delivery' : 'pickup'} date`;
-        if (!errorStep) errorStep = 2;
-      } else if (!isDateAvailable(deliveryDate)) {
-        newErrors.deliveryDate = 'Selected date is not available';
-        if (!errorStep) errorStep = 2;
-      }
+      });
+    } else if (deliveryDate && !isDateAvailable(deliveryDate)) {
+      newErrors.deliveryDate = 'Selected date is not available';
+      if (!errorStep) errorStep = 2;
     }
 
     return {
@@ -953,9 +1009,10 @@ const CheckoutPage: React.FC = () => {
     if (isProcessing) return;
 
     setIsProcessing(true);
+    logSecurityEvent('Payment confirmed', { amountInCents });
 
-    if (!firstName || !lastName || !email || !phone) {
-      alert('Please fill in your (Customer) details before paying.');
+    if (!email || !phone) {
+      alert('Please enter your email and phone number before paying.');
       setIsProcessing(false);
       return;
     }
@@ -1011,7 +1068,7 @@ const CheckoutPage: React.FC = () => {
               address: address,
               state: state,
               postcode: selectedPostcode,
-              message: '',
+              message: globalMessage.trim() || '',
             }
           : null;
         newOrder.customer_details = {
@@ -1042,6 +1099,7 @@ const CheckoutPage: React.FC = () => {
         .select();
 
       if (insertError) {
+        logSecurityEvent('Order insert failed', { error: insertError.message });
         console.error('%cCRITICAL SUPABASE ERROR:', 'color: red; font-size: 16px; font-weight: bold;');
         console.error('Error object:', insertError);
         console.error('Error message:', insertError.message);
@@ -1056,6 +1114,7 @@ const CheckoutPage: React.FC = () => {
       console.log('Insert Success:', insertedOrder);
       const orderId = insertedOrder?.[0]?.id;
       console.log('Inserted order ID:', orderId);
+      logSecurityEvent('Order created', { orderId });
 
       if (!orderId) {
         throw new Error('Failed to retrieve order ID after insert.');
@@ -1074,7 +1133,7 @@ const CheckoutPage: React.FC = () => {
                 price: getDisplayPrice(item),
                 image_url: getImageUrl(item),
                 selected_options: buildSelectedOptions(item),
-                recipient_info: buildRecipientInfoFromSplit(splitShipment),
+                recipient_info: buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]),
               };
             })
           )
@@ -1094,6 +1153,7 @@ const CheckoutPage: React.FC = () => {
         .insert(orderItemsPayload);
 
       if (orderItemsError) {
+        logSecurityEvent('Order items insert failed', { error: orderItemsError.message });
         console.error('Error inserting order items:', orderItemsError);
         throw new Error('Failed to save order items.');
       }
@@ -1105,8 +1165,9 @@ const CheckoutPage: React.FC = () => {
         })
         .join(', ');
 
+      const rawOrderId = insertedOrder?.[0]?.id || `ORDER-${Date.now()}`;
       const orderData: OrderData = {
-        id: insertedOrder?.[0]?.id || `ORDER-${Date.now()}`,
+        id: getDisplayOrderId(rawOrderId),
         email: email,
         firstName: isMultiShipping
           ? multiAddresses[expandedItems[0]?.key]?.firstName
@@ -1125,7 +1186,7 @@ const CheckoutPage: React.FC = () => {
               address: address,
               state: state,
               postcode: selectedPostcode,
-              message: '',
+              message: globalMessage.trim() || '',
             }
           : undefined,
         cartItems: cartItems,
@@ -1154,7 +1215,7 @@ const CheckoutPage: React.FC = () => {
                   imageUrl: getImageUrl(item),
                   selectedOptions: buildSelectedOptions(item),
                   selectedSize: item.selectedSize,
-                  recipientInfo: buildRecipientInfoFromSplit(splitShipment),
+                  recipientInfo: buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]),
                 };
               })
             )
@@ -1201,6 +1262,7 @@ const CheckoutPage: React.FC = () => {
             },
             EMAILJS_PUBLIC_KEY
           );
+          logSecurityEvent('Order confirmation email sent', { email });
         } else {
           console.error('❌ Critical: No email address found in formData, skipping email send.');
         }
@@ -1310,7 +1372,7 @@ const CheckoutPage: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="firstName" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                            First Name <span className="text-red-500">*</span>
+                            First Name
                           </label>
                           <input
                             type="text"
@@ -1327,7 +1389,6 @@ const CheckoutPage: React.FC = () => {
                                 });
                               }
                             }}
-                            required
                             className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                               errors.firstName || formErrors.firstName
                                 ? 'border-red-500 focus:border-red-600'
@@ -1341,7 +1402,7 @@ const CheckoutPage: React.FC = () => {
                         </div>
                         <div>
                           <label htmlFor="lastName" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                            Last Name <span className="text-red-500">*</span>
+                            Last Name
                           </label>
                           <input
                             type="text"
@@ -1358,7 +1419,6 @@ const CheckoutPage: React.FC = () => {
                                 });
                               }
                             }}
-                            required
                             className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                               errors.lastName || formErrors.lastName
                                 ? 'border-red-500 focus:border-red-600'
@@ -1391,7 +1451,6 @@ const CheckoutPage: React.FC = () => {
                               });
                             }
                           }}
-                          required
                           className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                             errors.phone || formErrors.phone
                               ? 'border-red-500 focus:border-red-600'
@@ -1500,7 +1559,6 @@ const CheckoutPage: React.FC = () => {
                                 }
                               }}
                               disabled={isRecipientSameAsSender}
-                              required
                               className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                                 errors.recipientFirstName
                                   ? 'border-red-500 focus:border-red-600'
@@ -1533,7 +1591,6 @@ const CheckoutPage: React.FC = () => {
                                 }
                               }}
                               disabled={isRecipientSameAsSender}
-                              required
                               className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                                 errors.recipientLastName
                                   ? 'border-red-500 focus:border-red-600'
@@ -1568,7 +1625,6 @@ const CheckoutPage: React.FC = () => {
                               }
                             }}
                             disabled={isRecipientSameAsSender}
-                            required
                             className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                               errors.recipientPhone
                                 ? 'border-red-500 focus:border-red-600'
@@ -1585,7 +1641,7 @@ const CheckoutPage: React.FC = () => {
                       <div className="space-y-4">
                         <div>
                           <label htmlFor="address" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                            Street Address <span className="text-red-500">*</span>
+                            Street Address
                           </label>
                           <input
                             type="text"
@@ -1604,7 +1660,6 @@ const CheckoutPage: React.FC = () => {
                                 });
                               }
                             }}
-                            required
                             className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                             errors.address || formErrors.address
                                 ? 'border-red-500 focus:border-red-600'
@@ -1620,7 +1675,7 @@ const CheckoutPage: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label htmlFor="state" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                              State <span className="text-red-500">*</span>
+                              State
                             </label>
                             <select
                               id="state"
@@ -1637,7 +1692,6 @@ const CheckoutPage: React.FC = () => {
                                   clearFormError('postcode');
                                 }
                               }}
-                              required
                               className={`w-full p-3 border rounded focus:border-stone-900 outline-none transition font-sans ${
                                 errors.state || formErrors.state
                                   ? 'border-red-500 focus:border-red-600'
@@ -1651,7 +1705,7 @@ const CheckoutPage: React.FC = () => {
                           {state === 'VIC' && (
                             <div>
                               <label htmlFor="postcode" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                                Suburb / Postcode <span className="text-red-500">*</span>
+                                Suburb / Postcode
                               </label>
                               <PostcodeCombobox
                                 value={selectedPostcode}
@@ -1797,7 +1851,7 @@ const CheckoutPage: React.FC = () => {
                             </div>
                             <div>
                               <label className="block text-xs font-semibold text-stone-900 mb-1.5 font-sans">
-                                Recipient Phone
+                                Recipient Phone <span className="text-red-500">*</span>
                               </label>
                               <input
                                 type="tel"
@@ -1822,7 +1876,7 @@ const CheckoutPage: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-semibold text-stone-900 mb-1.5 font-sans">
-                                  State
+                                  State <span className="text-red-500">*</span>
                                 </label>
                                 <select
                                   value={splitAddress.state || 'VIC'}
@@ -1836,7 +1890,7 @@ const CheckoutPage: React.FC = () => {
                               {splitAddress.state === 'VIC' && (
                                 <div>
                                   <label className="block text-xs font-semibold text-stone-900 mb-1.5 font-sans">
-                                    Suburb / Postcode
+                                    Suburb / Postcode <span className="text-red-500">*</span>
                                   </label>
                                   <PostcodeCombobox
                                     value={splitAddress.postcode || ''}
@@ -1847,12 +1901,45 @@ const CheckoutPage: React.FC = () => {
                                 </div>
                               )}
                             </div>
+                            <div className="rounded-xl border border-stone-200 bg-[#FDFBF7] p-4 shadow-sm">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-base">🎁</span>
+                                <p className="text-sm font-serif text-stone-700">
+                                  Message for {item.name}
+                                </p>
+                              </div>
+                              <textarea
+                                value={itemMessages[splitKey] || ''}
+                                onChange={(e) => updateItemMessage(splitKey, e.target.value)}
+                                rows={3}
+                                placeholder="Write a lovely message here..."
+                                className="w-full bg-white/70 p-3 text-sm text-stone-700 rounded-lg border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-300 focus:border-stone-300 resize-none font-sans"
+                              />
+                            </div>
                             {itemIndex < expandedList.length - 1 && (
                               <hr className="my-6 border-gray-200" />
                             )}
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {!isMultiToAddress && (
+                    <div className="rounded-xl border border-stone-200 bg-[#FDFBF7] p-5 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-lg">🎁</span>
+                        <p className="text-base font-serif text-stone-700">
+                          Gift Card Message
+                        </p>
+                      </div>
+                      <textarea
+                        value={globalMessage}
+                        onChange={(e) => setGlobalMessage(e.target.value)}
+                        rows={3}
+                        placeholder="Write a lovely message here..."
+                        className="w-full bg-white/70 p-3 text-sm text-stone-700 rounded-lg border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-300 focus:border-stone-300 resize-none font-sans"
+                      />
                     </div>
                   )}
 
@@ -1880,7 +1967,6 @@ const CheckoutPage: React.FC = () => {
                         }
                       }}
                       min={new Date().toISOString().split('T')[0]}
-                      required
                       className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
                         errors.deliveryDate
                           ? 'border-red-500 focus:border-red-600'
@@ -1932,6 +2018,7 @@ const CheckoutPage: React.FC = () => {
                 discountAmount={discountAmount}
                 finalTotal={finalTotal}
                 totalGST={totalGST}
+                isFormValid={isFormValid}
                 hasOtherState={hasOtherState}
                 isPaymentLoading={isPaymentLoading}
                 paymentError={paymentError}
