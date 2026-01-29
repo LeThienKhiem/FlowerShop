@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <title>Shop Blooms - Magnolia</title>
+  </head>
+  <body>
+    <div class="min-h-screen bg-white">
+      <!-- Top Announcement Bar -->
+      <div class="w-full py-2 px-4 text-center text-sm md:text-base" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 25%, #fecfef 50%, #ffecd2 75%, #fcb69f 100%); color: #333; font-weight: 500;">
+        ✨✨  Order Now for Valentine's Day 💐 ✨
+      </div>
+
+      <!-- Navigation Bar -->
+      <nav class="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-6">
+          <div class="flex items-center justify-end gap-8 py-4">
+            <a href="index.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              Home
+            </a>
+            <a href="shop.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              Shop Blooms
+            </a>
+            <a href="about.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              About Us
+            </a>
+            <a href="contact.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              Contact Us
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Shop Blooms Section -->
+      <section id="shop" class="py-16 md:py-24 px-6 bg-white">
+        <div class="max-w-7xl mx-auto">
+          <h2 class="text-3xl md:text-4xl font-bold text-center mb-12 font-serif" style="font-family: 'Playfair Display', serif">
+            Shop Blooms
+          </h2>
+          <div id="productsGrid" class="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            <!-- Products will be dynamically loaded here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="bg-gray-900 text-white py-8 px-6">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-gray-400 text-sm font-sans">
+              &copy; <span id="currentYear"></span> Welcome to Magnolia. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase Config -->
+    <script src="js/supabase-config.js"></script>
+    <!-- Product List Script (fetches and renders products when this script runs) -->
+    <script src="js/product-list.js"></script>
+  </body>
+</html>
+

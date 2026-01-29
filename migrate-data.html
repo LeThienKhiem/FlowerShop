@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <title>Data Migration - Magnolia</title>
+  </head>
+  <body>
+    <div class="min-h-screen bg-white py-16 px-6">
+      <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-8 font-serif" style="font-family: 'Playfair Display', serif">
+          Product Data Migration
+        </h1>
+        <p class="text-center text-gray-600 mb-8 font-sans">
+          This page will help you migrate hardcoded products to Supabase. Make sure you have updated the Supabase credentials in the script below.
+        </p>
+
+        <!-- Product Grid (Hidden - used for data extraction) -->
+        <div id="productContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8" style="display: none;">
+          <!-- Product 1 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://images.unsplash.com/photo-1531058240690-006c446962d8?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Red Rose" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">Red Rose</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$100.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$50.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 2 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://images.unsplash.com/photo-1608656218680-e8be81ce71d7?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Yellow Tulip" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">Yellow Tulip</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$90.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$45.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 3 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://plus.unsplash.com/premium_photo-1661767369944-56f410dd376f?q=80&w=1744&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Carnation" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">Carnation</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$76.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$38.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 4 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://images.unsplash.com/photo-1487070183336-b863922373d4?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="White Lily" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">White Lily</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$110.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$55.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 5 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://images.unsplash.com/photo-1488181665079-6c7f3b399bf4?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Sunflower" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">Sunflower</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$84.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$42.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 6 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://plus.unsplash.com/premium_photo-1676478746990-4ef5c8ef234a?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="White Daisy" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">White Daisy</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$70.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$35.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 7 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://images.unsplash.com/photo-1447875569765-2b3db822bec9?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Purple Orchid" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">Purple Orchid</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$136.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$68.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product 8 -->
+          <div class="product-card bg-white p-2">
+            <div class="product-image-wrapper aspect-square w-full overflow-hidden rounded-lg mb-4">
+              <img src="https://plus.unsplash.com/premium_photo-1676475964992-6404b8db0b53?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Pink Rose" class="w-full h-full object-cover">
+            </div>
+            <div class="text-black">
+              <h3 class="text-lg font-medium mb-2 font-sans">Pink Rose</h3>
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <del class="text-sm text-gray-500 font-sans">$96.00</del>
+                  <span class="text-lg font-bold text-[#6B8E23] font-sans">$48.00</span>
+                </div>
+                <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">-50%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Migration Button -->
+        <div class="text-center">
+          <button id="migrateBtn" class="bg-[#6B8E23] text-white py-4 px-8 rounded-lg font-bold text-lg hover:bg-[#5a7a1d] transition-colors font-sans">
+            START MIGRATION
+          </button>
+          <div id="statusMessage" class="mt-4 text-center font-sans"></div>
+        </div>
+
+        <!-- Preview Section -->
+        <div id="previewSection" class="mt-8 hidden">
+          <h2 class="text-2xl font-bold mb-4 font-serif" style="font-family: 'Playfair Display', serif">Preview Data</h2>
+          <pre id="previewData" class="bg-gray-100 p-4 rounded-lg overflow-auto max-h-96 text-sm font-mono"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+      // Supabase Configuration - UPDATE THESE VALUES
+      // You can copy these from js/supabase-config.js
+      const SUPABASE_URL = 'https://rfalymblhmqkjgajlktp.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_kjq9y-ClW1XgZR9mo9hiOg_lf8G2jqx';
+
+      // Initialize Supabase client
+      let supabase;
+      if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+        if (typeof window.supabase !== 'undefined') {
+          const { createClient } = window.supabase;
+          supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else {
+          console.error('Supabase CDN not loaded');
+        }
+      }
+
+      // Migration function
+      async function migrateProducts() {
+        const statusMessage = document.getElementById('statusMessage');
+        const migrateBtn = document.getElementById('migrateBtn');
+        const previewSection = document.getElementById('previewSection');
+        const previewData = document.getElementById('previewData');
+
+        // Check if Supabase is configured
+        if (!supabase) {
+          statusMessage.innerHTML = '<span class="text-red-600">❌ Please update SUPABASE_URL and SUPABASE_ANON_KEY in the script!</span>';
+          return;
+        }
+
+        try {
+          // Disable button
+          migrateBtn.disabled = true;
+          migrateBtn.textContent = 'Migrating...';
+          statusMessage.innerHTML = '<span class="text-blue-600">⏳ Extracting product data...</span>';
+
+          // Get all product cards
+          const productCards = document.querySelectorAll('#productContainer .product-card');
+          
+          if (productCards.length === 0) {
+            statusMessage.innerHTML = '<span class="text-red-600">❌ No products found in the container!</span>';
+            migrateBtn.disabled = false;
+            migrateBtn.textContent = 'START MIGRATION';
+            return;
+          }
+
+          // Extract product data
+          const products = [];
+          
+          productCards.forEach((card, index) => {
+            // Get product name from h3
+            const nameElement = card.querySelector('h3');
+            const name = nameElement ? nameElement.textContent.trim() : `Product ${index + 1}`;
+
+            // Get image src
+            const imgElement = card.querySelector('img');
+            const imageSrc = imgElement ? imgElement.src : '';
+
+            // Get prices
+            const originalPriceElement = card.querySelector('del');
+            const salePriceElement = card.querySelector('span.text-\\[\\#6B8E23\\]');
+            
+            let price = null;
+            let salePrice = null;
+
+            if (originalPriceElement) {
+              const priceText = originalPriceElement.textContent.trim();
+              price = parseFloat(priceText.replace('$', '').replace(',', ''));
+            }
+
+            if (salePriceElement) {
+              const salePriceText = salePriceElement.textContent.trim();
+              salePrice = parseFloat(salePriceText.replace('$', '').replace(',', ''));
+            }
+
+            // If no original price but sale price exists, use sale price as both
+            if (!price && salePrice) {
+              price = salePrice;
+            }
+
+            // If no sale price but original price exists, use original price as sale price
+            if (!salePrice && price) {
+              salePrice = price;
+            }
+
+            // Default values if nothing found
+            if (!price) price = 0;
+            if (!salePrice) salePrice = price;
+
+            // Get category (default to 'General' if not found)
+            const category = 'General';
+
+            // Get description (default empty)
+            const description = '';
+
+            // Construct product object
+            const product = {
+              name: name,
+              price: price,
+              sale_price: salePrice,
+              images: imageSrc ? [imageSrc] : [], // Convert single image to array
+              category: category,
+              description: description
+            };
+
+            products.push(product);
+          });
+
+          // Show preview
+          previewData.textContent = JSON.stringify(products, null, 2);
+          previewSection.classList.remove('hidden');
+
+          statusMessage.innerHTML = `<span class="text-blue-600">📦 Found ${products.length} products. Uploading to Supabase...</span>`;
+
+          // Upload to Supabase
+          const { data, error } = await supabase
+            .from('products')
+            .insert(products);
+
+          if (error) {
+            console.error('Migration error:', error);
+            statusMessage.innerHTML = `<span class="text-red-600">❌ Migration failed: ${error.message}</span>`;
+            migrateBtn.disabled = false;
+            migrateBtn.textContent = 'START MIGRATION';
+            return;
+          }
+
+          // Success!
+          console.log('Migration Successful!', data);
+          statusMessage.innerHTML = `<span class="text-green-600">✅ Migration Successful! ${products.length} products uploaded to Supabase.</span>`;
+          migrateBtn.textContent = 'MIGRATION COMPLETE';
+          migrateBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+          migrateBtn.classList.remove('bg-[#6B8E23]', 'hover:bg-[#5a7a1d]');
+
+        } catch (error) {
+          console.error('Migration error:', error);
+          statusMessage.innerHTML = `<span class="text-red-600">❌ Error: ${error.message}</span>`;
+          migrateBtn.disabled = false;
+          migrateBtn.textContent = 'START MIGRATION';
+        }
+      }
+
+      // Attach event listener
+      document.getElementById('migrateBtn').addEventListener('click', migrateProducts);
+
+      // Auto-migrate on page load if checkbox is checked (or if URL has ?auto=true)
+      const urlParams = new URLSearchParams(window.location.search);
+      const autoMigrateParam = urlParams.get('auto') === 'true';
+      
+      // Check if auto-migrate checkbox should be checked
+      const autoMigrateCheckbox = document.getElementById('autoMigrate');
+      if (autoMigrateParam) {
+        autoMigrateCheckbox.checked = true;
+        // Auto-migrate after a short delay to ensure Supabase is loaded
+        setTimeout(() => {
+          migrateProducts();
+        }, 500);
+      }
+    </script>
+  </body>
+</html>
+

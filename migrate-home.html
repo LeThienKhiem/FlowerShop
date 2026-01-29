@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Homepage Product Migration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .product-item {
+        border: 1px solid #ddd;
+        padding: 16px;
+        margin: 16px 0;
+        border-radius: 8px;
+      }
+      button {
+        background-color: #6B8E23;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        margin: 20px 0;
+      }
+      button:hover {
+        background-color: #5a7a1d;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 16px;
+        border-radius: 6px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="text-3xl font-bold mb-6">Homepage Product Migration</h1>
+    <p class="mb-4">This script will extract hardcoded products from the React component and mark them as featured in Supabase.</p>
+    
+    <button id="migrateBtn" onclick="migrateProducts()">START MIGRATION</button>
+    
+    <div id="status"></div>
+    
+    <div id="productsContainer" class="mt-8">
+      <h2 class="text-2xl font-bold mb-4">Products to Migrate:</h2>
+      <!-- Products will be displayed here -->
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase Config -->
+    <script src="js/supabase-config.js"></script>
+    
+    <script>
+      // Hardcoded products from FloralShop.tsx (masonry grid section)
+      const hardcodedProducts = [
+        {
+          id: 1,
+          name: 'Red Rose',
+          originalPrice: 100,
+          salePrice: 50,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1531058240690-006c446962d8?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[3/4]'
+        },
+        {
+          id: 2,
+          name: 'Yellow Tulip',
+          originalPrice: 90,
+          salePrice: 45,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1608656218680-e8be81ce71d7?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[4/3]'
+        },
+        {
+          id: 3,
+          name: 'Carnation',
+          originalPrice: 76,
+          salePrice: 38,
+          discountPercentage: 50,
+          imageUrl: 'https://plus.unsplash.com/premium_photo-1661767369944-56f410dd376f?q=80&w=1744&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[1/1]'
+        },
+        {
+          id: 4,
+          name: 'White Lily',
+          originalPrice: 110,
+          salePrice: 55,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1487070183336-b863922373d4?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[3/4]'
+        },
+        {
+          id: 5,
+          name: 'Sunflower',
+          originalPrice: 84,
+          salePrice: 42,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1488181665079-6c7f3b399bf4?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[4/3]'
+        },
+        {
+          id: 6,
+          name: 'White Daisy',
+          originalPrice: 70,
+          salePrice: 35,
+          discountPercentage: 50,
+          imageUrl: 'https://plus.unsplash.com/premium_photo-1676478746990-4ef5c8ef234a?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[1/1]'
+        },
+        {
+          id: 7,
+          name: 'Purple Orchid',
+          originalPrice: 136,
+          salePrice: 68,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1447875569765-2b3db822bec9?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[3/4]'
+        },
+        {
+          id: 8,
+          name: 'Pink Rose',
+          originalPrice: 96,
+          salePrice: 48,
+          discountPercentage: 50,
+          imageUrl: 'https://plus.unsplash.com/premium_photo-1676475964992-6404b8db0b53?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[4/3]'
+        },
+        {
+          id: 9,
+          name: 'Hydrangea',
+          originalPrice: 104,
+          salePrice: 52,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=800&q=80',
+          aspectRatio: 'aspect-[1/1]'
+        },
+        {
+          id: 10,
+          name: 'Peach Blossom',
+          originalPrice: 78,
+          salePrice: 39,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1615280825886-fa817c0a06cc?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[3/4]'
+        },
+        {
+          id: 11,
+          name: 'Lavender',
+          originalPrice: 88,
+          salePrice: 44,
+          discountPercentage: 50,
+          imageUrl: 'https://plus.unsplash.com/premium_photo-1673728254015-9a437bdb44aa?q=80&w=930&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[4/3]'
+        },
+        {
+          id: 12,
+          name: 'Lotus',
+          originalPrice: 92,
+          salePrice: 46,
+          discountPercentage: 50,
+          imageUrl: 'https://plus.unsplash.com/premium_photo-1695750536632-7e3055fc48d5?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[1/1]'
+        },
+        {
+          id: 13,
+          name: 'Pink Carnation',
+          originalPrice: 80,
+          salePrice: 40,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1653942808886-99985ca6c1f4?q=80&w=627&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[3/4]'
+        },
+        {
+          id: 14,
+          name: 'White Rose',
+          originalPrice: 102,
+          salePrice: 51,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1495231916356-a86217efff12?q=80&w=872&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[4/3]'
+        },
+        {
+          id: 15,
+          name: 'Yellow Daisy',
+          originalPrice: 74,
+          salePrice: 37,
+          discountPercentage: 50,
+          imageUrl: 'https://images.unsplash.com/photo-1531112998639-59af23e7a65e?q=80&w=782&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+          aspectRatio: 'aspect-[1/1]'
+        }
+      ];
+
+      // Display products
+      function displayProducts() {
+        const container = document.getElementById('productsContainer');
+        hardcodedProducts.forEach(product => {
+          const div = document.createElement('div');
+          div.className = 'product-item';
+          div.innerHTML = `
+            <h3 class="font-bold text-lg">${product.name}</h3>
+            <p>Original: $${product.originalPrice} | Sale: $${product.salePrice} (${product.discountPercentage}% off)</p>
+            <p class="text-sm text-gray-600">Image: ${product.imageUrl.substring(0, 60)}...</p>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      // Migration function
+      async function migrateProducts() {
+        const statusDiv = document.getElementById('status');
+        const migrateBtn = document.getElementById('migrateBtn');
+        
+        migrateBtn.disabled = true;
+        migrateBtn.textContent = 'Migrating...';
+        statusDiv.innerHTML = '<p>Starting migration...</p>';
+        statusDiv.className = 'status';
+
+        try {
+          // Wait for Supabase to be ready
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          if (!window.supabase) {
+            throw new Error('Supabase client not initialized. Please check js/supabase-config.js');
+          }
+
+          const supabaseClient = window.supabase;
+          let successCount = 0;
+          let errorCount = 0;
+          const errors = [];
+
+          // Convert products to Supabase format
+          const productsToInsert = hardcodedProducts.map(product => ({
+            name: product.name,
+            price: product.originalPrice,
+            sale_price: product.salePrice,
+            category: 'All', // Default category
+            description: `${product.name} - Beautiful ${product.name.toLowerCase()} with ${product.discountPercentage}% discount`,
+            images: [product.imageUrl], // Convert single image to array
+            tags: [product.name.toLowerCase().replace(/\s+/g, '-')],
+            in_stock: true,
+            is_featured: true // CRITICAL: Mark all as featured
+          }));
+
+          // Insert products
+          const { data, error } = await supabaseClient
+            .from('products')
+            .insert(productsToInsert)
+            .select();
+
+          if (error) {
+            throw error;
+          }
+
+          successCount = data ? data.length : 0;
+          
+          statusDiv.className = 'status success';
+          statusDiv.innerHTML = `
+            <h3 class="font-bold text-lg mb-2">Homepage Migration Complete!</h3>
+            <p>Successfully migrated ${successCount} products to Supabase.</p>
+            <p class="mt-2">All products have been marked as <strong>is_featured: true</strong>.</p>
+            <p class="mt-2 text-sm">You can now delete this migration file (migrate-home.html).</p>
+          `;
+
+          migrateBtn.textContent = 'Migration Complete';
+          migrateBtn.style.backgroundColor = '#28a745';
+
+        } catch (error) {
+          console.error('Migration error:', error);
+          statusDiv.className = 'status error';
+          statusDiv.innerHTML = `
+            <h3 class="font-bold text-lg mb-2">Migration Failed</h3>
+            <p>Error: ${error.message}</p>
+            <p class="mt-2 text-sm">Please check the browser console for more details.</p>
+          `;
+          migrateBtn.disabled = false;
+          migrateBtn.textContent = 'Retry Migration';
+        }
+      }
+
+      // Display products on load
+      displayProducts();
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <title>Contact Us - Magnolia</title>
+  </head>
+  <body>
+    <div class="min-h-screen bg-white">
+      <!-- Top Announcement Bar -->
+      <div class="w-full py-2 px-4 text-center text-sm md:text-base" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 25%, #fecfef 50%, #ffecd2 75%, #fcb69f 100%); color: #333; font-weight: 500;">
+        ✨✨ We're taking a break from 4 to 12 Jan and excited to welcome you back, see you soon!!  💐 ✨
+      </div>
+
+      <!-- Navigation Bar -->
+      <nav class="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-6">
+          <div class="flex items-center justify-end gap-8 py-4">
+            <a href="index.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              Home
+            </a>
+            <a href="shop.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              Shop Blooms
+            </a>
+            <a href="about.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              About Us
+            </a>
+            <a href="contact.html" class="text-black hover:text-[#6B8E23] transition-colors font-serif text-base md:text-lg" style="font-family: 'Playfair Display', serif">
+              Contact Us
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Contact Us Section -->
+      <section id="contact" class="py-16 md:py-24 px-6 bg-white">
+        <div class="max-w-7xl mx-auto">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <!-- Left Column - Image -->
+            <div class="hidden lg:block">
+              <div class="aspect-square w-full overflow-hidden rounded-lg">
+                <img src="https://images.unsplash.com/photo-1487070183336-b863922373d4?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Contact Us" class="w-full h-full object-cover">
+              </div>
+            </div>
+
+            <!-- Right Column - Form -->
+            <div>
+              <h2 class="text-3xl md:text-4xl font-bold mb-8 font-serif" style="font-family: 'Playfair Display', serif">
+                WRITE A MESSAGE
+              </h2>
+              <form id="contactForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2 font-sans">
+                      Name
+                    </label>
+                    <input type="text" id="name" name="name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B8E23] focus:border-[#6B8E23] outline-none font-sans" placeholder="Your name" required>
+                  </div>
+                  <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2 font-sans">
+                      Email
+                    </label>
+                    <input type="email" id="email" name="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B8E23] focus:border-[#6B8E23] outline-none font-sans" placeholder="Your email" required>
+                  </div>
+                </div>
+                <div>
+                  <label for="message" class="block text-sm font-medium text-gray-700 mb-2 font-sans">
+                    Write us something
+                  </label>
+                  <textarea id="message" name="message" rows="6" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6B8E23] focus:border-[#6B8E23] outline-none font-sans" placeholder="Your message..." required></textarea>
+                </div>
+                <button type="submit" class="w-full bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 transition-colors font-sans">
+                  SEND MESSAGE
+                </button>
+              </form>
+
+              <!-- Delivery Areas Info -->
+              <div class="mt-8 pt-8 border-t border-gray-200">
+                <p class="text-gray-700 leading-relaxed font-sans">
+                  We can deliver flowers to Blackburn South... Hospitals, Nursing Homes, Funeral Homes, Businesses, Schools.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="bg-gray-900 text-white py-8 px-6">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-gray-400 text-sm font-sans">
+              &copy; <span id="currentYear"></span> Welcome to Magnolia. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById('currentYear').textContent = new Date().getFullYear();
+      
+      // Form submission handler
+      document.getElementById('contactForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        alert('Thank you for your message! We will get back to you soon.');
+        e.target.reset();
+      });
+    </script>
+  </body>
+</html>
+

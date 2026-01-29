@@ -1,0 +1,27 @@
+State	Suburb	Postcode	ShippingFee
+Victoria	Blackburn South (Local)	3130	10
+Victoria	Box Hill North	3129	10
+Victoria	Forest Hill	3131	10
+Victoria	Balwyn North	3104	15
+Victoria	Balwyn	3103	15
+Victoria	Burwood	3125	15
+Victoria	Box Hill	3128	15
+Victoria	Burwood East	3151	15
+Victoria	Doncaster East	3109	15
+Victoria	Doncaster	3108	15
+Victoria	Mitcham	3132	15
+Victoria	Vermont	3133	15
+Victoria	Bulleen	3105	20
+Victoria	Camberwell	3124	20
+Victoria	Canterbury	3126	20
+Victoria	Chadstone	3148	20
+Victoria	Donvale	3111	20
+Victoria	Glen Waverley	3150	20
+Victoria	Hawthorn	3122	20
+Victoria	Mount Waverley	3149	20
+Victoria	Surrey Hills	3127	20
+Victoria	Templestowe	3107	20
+Victoria	Templestowe Lower	3106	20
+Victoria	Richmond / Burnley	3121	20
+Victoria	Clarinda	3169	20
+Victoria	Toorak / Hawksburn	3142	20

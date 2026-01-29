@@ -1,0 +1,147 @@
+// Australian Suburbs Data
+// Format: { name: "Suburb Name", state: "State Code", postcode: "Postcode" }
+
+export interface SuburbData {
+  name: string;
+  state: string;
+  postcode: string;
+}
+
+export const suburbsData: SuburbData[] = [
+  // Victoria (VIC)
+  { name: "Melbourne", state: "VIC", postcode: "3000" },
+  { name: "Richmond", state: "VIC", postcode: "3121" },
+  { name: "Fitzroy", state: "VIC", postcode: "3065" },
+  { name: "St Kilda", state: "VIC", postcode: "3182" },
+  { name: "South Yarra", state: "VIC", postcode: "3141" },
+  { name: "Carlton", state: "VIC", postcode: "3053" },
+  { name: "Brunswick", state: "VIC", postcode: "3056" },
+  { name: "Footscray", state: "VIC", postcode: "3011" },
+  { name: "Prahran", state: "VIC", postcode: "3181" },
+  { name: "Collingwood", state: "VIC", postcode: "3066" },
+  { name: "Blackburn South", state: "VIC", postcode: "3130" },
+  { name: "Box Hill", state: "VIC", postcode: "3128" },
+  { name: "Glen Waverley", state: "VIC", postcode: "3150" },
+  { name: "Doncaster", state: "VIC", postcode: "3108" },
+  { name: "Brighton", state: "VIC", postcode: "3186" },
+  
+  // New South Wales (NSW)
+  { name: "Sydney", state: "NSW", postcode: "2000" },
+  { name: "Parramatta", state: "NSW", postcode: "2150" },
+  { name: "Newtown", state: "NSW", postcode: "2042" },
+  { name: "Bondi", state: "NSW", postcode: "2026" },
+  { name: "Manly", state: "NSW", postcode: "2095" },
+  { name: "Surry Hills", state: "NSW", postcode: "2010" },
+  { name: "Chatswood", state: "NSW", postcode: "2067" },
+  { name: "North Sydney", state: "NSW", postcode: "2060" },
+  { name: "Strathfield", state: "NSW", postcode: "2135" },
+  { name: "Burwood", state: "NSW", postcode: "2134" },
+  { name: "Hurstville", state: "NSW", postcode: "2220" },
+  { name: "Bankstown", state: "NSW", postcode: "2200" },
+  { name: "Liverpool", state: "NSW", postcode: "2170" },
+  { name: "Penrith", state: "NSW", postcode: "2750" },
+  { name: "Newcastle", state: "NSW", postcode: "2300" },
+  
+  // Queensland (QLD)
+  { name: "Brisbane", state: "QLD", postcode: "4000" },
+  { name: "South Brisbane", state: "QLD", postcode: "4101" },
+  { name: "Fortitude Valley", state: "QLD", postcode: "4006" },
+  { name: "Surfers Paradise", state: "QLD", postcode: "4217" },
+  { name: "Gold Coast", state: "QLD", postcode: "4217" },
+  { name: "Toowong", state: "QLD", postcode: "4066" },
+  { name: "New Farm", state: "QLD", postcode: "4005" },
+  { name: "Taringa", state: "QLD", postcode: "4068" },
+  { name: "Sunnybank", state: "QLD", postcode: "4109" },
+  { name: "Chermside", state: "QLD", postcode: "4032" },
+  { name: "Cairns", state: "QLD", postcode: "4870" },
+  { name: "Townsville", state: "QLD", postcode: "4810" },
+  { name: "Ipswich", state: "QLD", postcode: "4305" },
+  { name: "Logan", state: "QLD", postcode: "4114" },
+  { name: "Redcliffe", state: "QLD", postcode: "4020" },
+  
+  // Western Australia (WA)
+  { name: "Perth", state: "WA", postcode: "6000" },
+  { name: "Fremantle", state: "WA", postcode: "6160" },
+  { name: "Subiaco", state: "WA", postcode: "6008" },
+  { name: "Northbridge", state: "WA", postcode: "6003" },
+  { name: "Claremont", state: "WA", postcode: "6010" },
+  { name: "Cottesloe", state: "WA", postcode: "6011" },
+  { name: "Joondalup", state: "WA", postcode: "6027" },
+  { name: "Mandurah", state: "WA", postcode: "6210" },
+  { name: "Bunbury", state: "WA", postcode: "6230" },
+  { name: "Geraldton", state: "WA", postcode: "6530" },
+  { name: "Albany", state: "WA", postcode: "6330" },
+  { name: "Kalgoorlie", state: "WA", postcode: "6430" },
+  { name: "Broome", state: "WA", postcode: "6725" },
+  { name: "Karratha", state: "WA", postcode: "6714" },
+  { name: "Port Hedland", state: "WA", postcode: "6721" },
+  
+  // South Australia (SA)
+  { name: "Adelaide", state: "SA", postcode: "5000" },
+  { name: "North Adelaide", state: "SA", postcode: "5006" },
+  { name: "Glenelg", state: "SA", postcode: "5045" },
+  { name: "Unley", state: "SA", postcode: "5061" },
+  { name: "Prospect", state: "SA", postcode: "5082" },
+  { name: "Norwood", state: "SA", postcode: "5067" },
+  { name: "Mount Barker", state: "SA", postcode: "5251" },
+  { name: "Victor Harbor", state: "SA", postcode: "5211" },
+  { name: "Port Augusta", state: "SA", postcode: "5700" },
+  { name: "Whyalla", state: "SA", postcode: "5600" },
+  { name: "Murray Bridge", state: "SA", postcode: "5253" },
+  { name: "Port Pirie", state: "SA", postcode: "5540" },
+  { name: "Port Lincoln", state: "SA", postcode: "5606" },
+  { name: "Kadina", state: "SA", postcode: "5554" },
+  { name: "Naracoorte", state: "SA", postcode: "5271" },
+  
+  // Tasmania (TAS)
+  { name: "Hobart", state: "TAS", postcode: "7000" },
+  { name: "Launceston", state: "TAS", postcode: "7250" },
+  { name: "Devonport", state: "TAS", postcode: "7310" },
+  { name: "Burnie", state: "TAS", postcode: "7320" },
+  { name: "Ulverstone", state: "TAS", postcode: "7315" },
+  { name: "George Town", state: "TAS", postcode: "7253" },
+  { name: "Scottsdale", state: "TAS", postcode: "7260" },
+  { name: "Smithton", state: "TAS", postcode: "7330" },
+  { name: "Queenstown", state: "TAS", postcode: "7467" },
+  { name: "Strahan", state: "TAS", postcode: "7468" },
+  { name: "St Helens", state: "TAS", postcode: "7216" },
+  { name: "Sorell", state: "TAS", postcode: "7172" },
+  { name: "Kingston", state: "TAS", postcode: "7050" },
+  { name: "New Norfolk", state: "TAS", postcode: "7140" },
+  { name: "Penguin", state: "TAS", postcode: "7316" },
+  
+  // Australian Capital Territory (ACT)
+  { name: "Canberra", state: "ACT", postcode: "2600" },
+  { name: "Belconnen", state: "ACT", postcode: "2617" },
+  { name: "Gungahlin", state: "ACT", postcode: "2912" },
+  { name: "Tuggeranong", state: "ACT", postcode: "2900" },
+  { name: "Weston Creek", state: "ACT", postcode: "2611" },
+  { name: "Woden", state: "ACT", postcode: "2606" },
+  { name: "Dickson", state: "ACT", postcode: "2602" },
+  { name: "Manuka", state: "ACT", postcode: "2603" },
+  { name: "Kingston", state: "ACT", postcode: "2604" },
+  { name: "Braddon", state: "ACT", postcode: "2612" },
+  { name: "Civic", state: "ACT", postcode: "2601" },
+  { name: "Fyshwick", state: "ACT", postcode: "2609" },
+  { name: "Narrabundah", state: "ACT", postcode: "2604" },
+  { name: "Red Hill", state: "ACT", postcode: "2603" },
+  { name: "Yarralumla", state: "ACT", postcode: "2600" },
+  
+  // Northern Territory (NT)
+  { name: "Darwin", state: "NT", postcode: "0800" },
+  { name: "Alice Springs", state: "NT", postcode: "0870" },
+  { name: "Palmerston", state: "NT", postcode: "0830" },
+  { name: "Katherine", state: "NT", postcode: "0850" },
+  { name: "Nhulunbuy", state: "NT", postcode: "0880" },
+  { name: "Tennant Creek", state: "NT", postcode: "0860" },
+  { name: "Yulara", state: "NT", postcode: "0872" },
+  { name: "Casuarina", state: "NT", postcode: "0810" },
+  { name: "Nightcliff", state: "NT", postcode: "0810" },
+  { name: "Fannie Bay", state: "NT", postcode: "0820" },
+  { name: "Stuart Park", state: "NT", postcode: "0820" },
+  { name: "Larrakeyah", state: "NT", postcode: "0820" },
+  { name: "Parap", state: "NT", postcode: "0820" },
+  { name: "Rapid Creek", state: "NT", postcode: "0810" },
+  { name: "Millner", state: "NT", postcode: "0810" }
+];
+
