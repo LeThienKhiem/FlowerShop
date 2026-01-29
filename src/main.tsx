@@ -4,6 +4,8 @@ import App from './App.tsx'
 import './index.css'
 import { CartProvider } from './context/CartContext'
 
+console.log('App initialized (start)');
+
 // Global error handlers for unhandled promise rejections and errors
 // This catches errors from third-party scripts, browser extensions, etc.
 window.addEventListener('error', (event) => {
@@ -38,5 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </CartProvider>
   </React.StrictMode>,
 )
+
+console.log('App initialized (end)');
 
 

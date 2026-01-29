@@ -705,7 +705,9 @@ const CheckoutPage: React.FC = () => {
   const isEmailValid = useMemo(() => /\S+@\S+\.\S+/.test(email), [email]);
 
   const isFormValid = useMemo(() => {
-    const hasContact = email.trim().length > 0 && phone.trim().length > 0;
+    const safeEmail = (email ?? '').trim();
+    const safePhone = (phone ?? '').trim();
+    const hasContact = safeEmail.length > 0 && safePhone.length > 0;
     if (!hasContact) {
       return false;
     }
@@ -722,9 +724,9 @@ const CheckoutPage: React.FC = () => {
 
     const allItemsValid = splitItems.every(({ key }) => {
       const splitAddress = splitShipments[key];
-      const hasPhone = Boolean(splitAddress?.phone?.trim());
-      const hasState = Boolean(splitAddress?.state?.trim());
-      const hasSuburb = Boolean(splitAddress?.postcode?.trim());
+      const hasPhone = Boolean((splitAddress?.phone ?? '').trim());
+      const hasState = Boolean((splitAddress?.state ?? '').trim());
+      const hasSuburb = Boolean((splitAddress?.postcode ?? '').trim());
       return hasPhone && hasState && hasSuburb;
     });
 
