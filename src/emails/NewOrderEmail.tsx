@@ -1,6 +1,5 @@
 import React from 'react';
 import { Html, Head, Body, Container, Section, Text, Img } from '@react-email/components';
-import { getDisplayOrderId } from '../lib/orderId';
 
 interface RecipientInfo {
   name?: string;
@@ -21,6 +20,7 @@ interface EmailItem {
 }
 
 interface NewOrderEmailProps {
+  /** Display order ID (e.g. from getDisplayOrderId). Use same value for subject and body. */
   orderId: string | number;
   items: EmailItem[];
   subtotal: number;
@@ -59,7 +59,6 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
   customerEmail,
   customerPhone,
 }) => {
-  const displayOrderId = getDisplayOrderId(orderId);
   return (
     <Html>
       <Head />
@@ -67,7 +66,7 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
         <Container style={{ maxWidth: '480px', margin: '16px auto', backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px' }}>
           <Section>
             <Text style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 12px' }}>
-              New Order: #{displayOrderId}
+              New Order: #{orderId}
             </Text>
           </Section>
 

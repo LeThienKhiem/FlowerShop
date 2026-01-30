@@ -104,6 +104,16 @@ const AdminLayout: React.FC = () => {
                 >
                   Order Management
                 </Link>
+                <Link
+                  to="/admin/promotions"
+                  className={`px-6 py-2 rounded-lg font-medium transition-colors font-sans ${
+                    isActive('/admin/promotions')
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  Promotions
+                </Link>
               </div>
 
               {/* Page Content (Outlet renders child routes) */}

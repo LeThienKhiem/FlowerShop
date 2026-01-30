@@ -1168,8 +1168,9 @@ const CheckoutPage: React.FC = () => {
         .join(', ');
 
       const rawOrderId = insertedOrder?.[0]?.id || `ORDER-${Date.now()}`;
+      const displayOrderId = getDisplayOrderId(rawOrderId);
       const orderData: OrderData = {
-        id: getDisplayOrderId(rawOrderId),
+        id: displayOrderId,
         email: email,
         firstName: isMultiShipping
           ? multiAddresses[expandedItems[0]?.key]?.firstName
@@ -1233,7 +1234,7 @@ const CheckoutPage: React.FC = () => {
 
         const emailHtml = renderToStaticMarkup(
           <NewOrderEmail
-            orderId={orderData.id}
+            orderId={displayOrderId}
             items={emailItems}
             subtotal={subtotal}
             shipping={shippingCost}
@@ -1245,21 +1246,26 @@ const CheckoutPage: React.FC = () => {
           />
         );
 
+        const orderIdStr = String(displayOrderId);
         console.log('📧 Sending email to:', email);
         console.log('Payload:', {
           to_email: email,
           to_name: `${orderData.firstName ?? ''} ${orderData.lastName ?? ''}`.trim() || 'Customer',
-          order_id: String(orderData.id),
+          order_id: orderIdStr,
+          email_subject: `Order Confirmed #${orderIdStr}!`,
         });
 
         if (email) {
+          // Use order_id and email_subject from same display ID. In EmailJS template, set
+          // Subject to {{email_subject}} so subject and body show the same order #.
           await emailjs.send(
             EMAILJS_SERVICE_ID,
             EMAILJS_TEMPLATE_ID,
             {
               to_name: `${orderData.firstName ?? ''} ${orderData.lastName ?? ''}`.trim() || 'Customer',
               to_email: email,
-              order_id: String(orderData.id),
+              order_id: orderIdStr,
+              email_subject: `Order Confirmed #${orderIdStr}!`,
               content_html: emailHtml,
             },
             EMAILJS_PUBLIC_KEY

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import FloralShop from './components/FloralShop';
 import FloatingCallBtn from './components/FloatingCallBtn';
-import ValentinePopup from './components/ValentinePopup';
+import PromotionPopup from './components/PromotionPopup';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load heavy pages - only load when needed
@@ -21,6 +21,7 @@ const AdminCategory = lazy(() => import('./pages/AdminCategory'));
 const AdminProducts = lazy(() => import('./pages/AdminProducts'));
 const AdminOrders = lazy(() => import('./pages/AdminOrders'));
 const AdminDateManagement = lazy(() => import('./pages/AdminDateManagement'));
+const PromotionSettings = lazy(() => import('./pages/admin/PromotionSettings'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -55,10 +56,11 @@ function App() {
           <Route path="products" element={<Suspense fallback={<PageLoader />}><AdminProducts /></Suspense>} />
           <Route path="orders" element={<Suspense fallback={<PageLoader />}><AdminOrders /></Suspense>} />
           <Route path="dates" element={<Suspense fallback={<PageLoader />}><AdminDateManagement /></Suspense>} />
+          <Route path="promotions" element={<Suspense fallback={<PageLoader />}><PromotionSettings /></Suspense>} />
         </Route>
       </Routes>
       <FloatingCallBtn />
-      <ValentinePopup />
+      <PromotionPopup />
     </BrowserRouter>
     </ErrorBoundary>
   );
