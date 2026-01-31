@@ -31,6 +31,7 @@ interface Category {
 /** Product with category relations for filtering */
 type ProductWithCategories = Product & {
   product_categories?: { category_id: string }[];
+  categories?: { id: string; name: string }[];
 };
 
 const Shop: React.FC = () => {
@@ -132,7 +133,23 @@ const Shop: React.FC = () => {
         setIsLoadingProducts(true);
         let query = supabase
           .from('products')
-          .select('id, name, price, sale_price, images, description, in_stock, created_at, product_categories(category_id)')
+          .select(`
+            id,
+            name,
+            price,
+            sale_price,
+            images,
+            description,
+            in_stock,
+            created_at,
+            product_categories(
+              category_id,
+              categories(
+                id,
+                name
+              )
+            )
+          `)
           .eq('in_stock', true);
 
         if (sortOrder === 'asc') {
@@ -149,7 +166,27 @@ const Shop: React.FC = () => {
           console.error('Error fetching all products:', error);
           setAllProducts([]);
         } else if (data) {
-          setAllProducts(data as ProductWithCategories[]);
+          const transformedProducts: ProductWithCategories[] = (data as any[]).map((product) => {
+            const categories: { id: string; name: string }[] = [];
+
+            if (product.product_categories && Array.isArray(product.product_categories)) {
+              product.product_categories.forEach((pc: any) => {
+                if (pc.categories?.id) {
+                  categories.push({
+                    id: pc.categories.id,
+                    name: pc.categories.name,
+                  });
+                }
+              });
+            }
+
+            return {
+              ...product,
+              categories,
+            };
+          });
+
+          setAllProducts(transformedProducts);
         }
       } catch (error) {
         console.error('Error loading all products:', error);

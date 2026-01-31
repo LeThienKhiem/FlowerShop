@@ -9,16 +9,16 @@ export interface DeliveryZone {
 }
 
 export const DELIVERY_ZONES: DeliveryZone[] = [
-  { postcode: "3130", price: 10, label: "3130 - Blackburn South (Local)" },
-  { postcode: "3129", price: 10, label: "3129 - Box Hill North" },
+  { postcode: "3130", price: 10, label: "3130 - Blackburn South" },
+  { postcode: "3129", price: 20, label: "3129 - Box Hill North" },
   { postcode: "3131", price: 10, label: "3131 - Forest Hill" },
-  { postcode: "3104", price: 15, label: "3104 - Balwyn North" },
-  { postcode: "3103", price: 15, label: "3103 - Balwyn" },
+  { postcode: "3104", price: 20, label: "3104 - Balwyn North" },
+  { postcode: "3103", price: 20, label: "3103 - Balwyn" },
   { postcode: "3125", price: 15, label: "3125 - Burwood" },
   { postcode: "3128", price: 15, label: "3128 - Box Hill" },
   { postcode: "3151", price: 15, label: "3151 - Burwood East" },
-  { postcode: "3109", price: 15, label: "3109 - Doncaster East" },
-  { postcode: "3108", price: 15, label: "3108 - Doncaster" },
+  { postcode: "3109", price: 20, label: "3109 - Doncaster East" },
+  { postcode: "3108", price: 20, label: "3108 - Doncaster" },
   { postcode: "3132", price: 15, label: "3132 - Mitcham" },
   { postcode: "3133", price: 15, label: "3133 - Vermont" },
   { postcode: "3105", price: 20, label: "3105 - Bulleen" },
@@ -26,7 +26,6 @@ export const DELIVERY_ZONES: DeliveryZone[] = [
   { postcode: "3126", price: 20, label: "3126 - Canterbury" },
   { postcode: "3148", price: 20, label: "3148 - Chadstone" },
   { postcode: "3111", price: 20, label: "3111 - Donvale" },
-  { postcode: "3150", price: 20, label: "3150 - Glen Waverley" },
   { postcode: "3122", price: 20, label: "3122 - Hawthorn" },
   { postcode: "3149", price: 20, label: "3149 - Mount Waverley" },
   { postcode: "3127", price: 20, label: "3127 - Surrey Hills" },
@@ -35,6 +34,12 @@ export const DELIVERY_ZONES: DeliveryZone[] = [
   { postcode: "3121", price: 20, label: "3121 - Richmond / Burnley" },
   { postcode: "3169", price: 20, label: "3169 - Clarinda" },
   { postcode: "3142", price: 20, label: "3142 - Toorak / Hawksburn" },
+  { postcode: "3131", price: 15, label: "3131 - Nunawading" },
+  { postcode: "3134", price: 20, label: "3134 - Ringwood" },
+  { postcode: "3135", price: 20, label: "3135 - Heathmont" },
+  { postcode: "3130", price: 10, label: "3130 - Blackburn" },
+  { postcode: "3130", price: 10, label: "3130 - Blackburn North" },
+  { postcode: "3133", price: 15, label: "3133 - Vermont South" },
 ].sort((a, b) => a.postcode.localeCompare(b.postcode)); // Sort by postcode
 
 // Helper function to get display label without price
@@ -73,7 +78,19 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
 }) => {
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  const [selectedZone, setSelectedZone] = useState<DeliveryZone | null>(null);
   const comboboxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!value || value === 'other') {
+      setSelectedZone(null);
+      return;
+    }
+    if (selectedZone?.postcode !== value) {
+      const zone = DELIVERY_ZONES.find((z) => z.postcode === value) || null;
+      setSelectedZone(zone);
+    }
+  }, [value, selectedZone?.postcode]);
 
   // Click outside handler
   useEffect(() => {
@@ -110,14 +127,15 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
   const hasMatch = filteredZones.length > 0;
 
   // Handle zone selection
-  const handleZoneSelect = (postcode: string) => {
-    if (postcode === 'other') {
+  const handleZoneSelect = (zone: DeliveryZone | 'other') => {
+    if (zone === 'other') {
       onChange('other');
       onPriceChange?.(null);
+      setSelectedZone(null);
     } else {
-      const zone = DELIVERY_ZONES.find((z) => z.postcode === postcode);
-      onChange(postcode);
-      onPriceChange?.(zone ? zone.price : null);
+      onChange(zone.postcode);
+      onPriceChange?.(zone.price);
+      setSelectedZone(zone);
     }
     setSearchInput('');
     setIsComboboxOpen(false);
@@ -143,6 +161,9 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
       return 'Other / Not Listed';
     }
     if (value) {
+      if (selectedZone?.postcode === value) {
+        return getDisplayLabel(selectedZone);
+      }
       const zone = DELIVERY_ZONES.find((z) => z.postcode === value);
       return zone ? getDisplayLabel(zone) : '';
     }
@@ -213,11 +234,13 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
                 {/* Show all zones when no search or when there are matches */}
                 {filteredZones.map((zone) => (
                   <button
-                    key={zone.postcode}
+                    key={`${zone.postcode}-${zone.label}`}
                     type="button"
-                    onClick={() => handleZoneSelect(zone.postcode)}
+                    onClick={() => handleZoneSelect(zone)}
                     className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors font-sans text-sm ${
-                      value === zone.postcode ? 'bg-stone-50 font-semibold' : ''
+                      selectedZone?.postcode === zone.postcode && selectedZone?.label === zone.label
+                        ? 'bg-stone-50 font-semibold'
+                        : ''
                     }`}
                   >
                     {getDisplayLabel(zone)}

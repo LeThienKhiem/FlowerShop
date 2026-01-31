@@ -168,16 +168,12 @@ const About: React.FC = () => {
               </h3>
               <div className="space-y-3 text-gray-700 font-sans">
                 <div className="flex justify-between">
-                  <span className="font-medium">Monday - Friday</span>
-                  <span>9:00 AM - 6:00 PM</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Saturday</span>
-                  <span>9:00 AM - 5:00 PM</span>
+                  <span className="font-medium">Monday - Saturday</span>
+                  <span>9:00 AM - 6:30 PM</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Sunday</span>
-                  <span>10:00 AM - 4:00 PM</span>
+                  <span>10:30 AM - 6:00 PM</span>
                 </div>
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-sm text-gray-500 italic">

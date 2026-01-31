@@ -12,13 +12,9 @@ interface Category {
   slug?: string;
 }
 
-interface CategoryWithChildren extends Category {
-  children: Category[];
-}
-
 const Header: React.FC = () => {
   const { cartCount } = useCart();
-  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showMobileShopDropdown, setShowMobileShopDropdown] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
@@ -28,7 +24,10 @@ const Header: React.FC = () => {
   // Toggle mobile menu
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
-  // Fetch categories from Supabase and group them by parent
+  const sortCategoriesByName = (list: Category[]) =>
+    [...list].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Fetch categories from Supabase as a flat list
   useEffect(() => {
     async function loadCategories() {
       try {
@@ -36,99 +35,41 @@ const Header: React.FC = () => {
         const { data, error } = await supabase
           .from('categories')
           .select('*')
-          .order('display_order', { ascending: true });
+          .order('name', { ascending: true });
 
         if (error) {
           console.error('Error fetching categories:', error);
           // Use placeholder data if Supabase fails
-          setCategories([
-            {
-              id: '1',
-              name: 'Occasions',
-              parent_id: null,
-              children: [
-                { id: '1-1', name: 'Birthday', parent_id: '1' },
-                { id: '1-2', name: 'Anniversary', parent_id: '1' },
-                { id: '1-3', name: 'Wedding', parent_id: '1' },
-              ],
-            },
-            {
-              id: '2',
-              name: 'Floral',
-              parent_id: null,
-              children: [
-                { id: '2-1', name: 'Roses', parent_id: '2' },
-                { id: '2-2', name: 'Lilies', parent_id: '2' },
-                { id: '2-3', name: 'Tulips', parent_id: '2' },
-              ],
-            },
-            {
-              id: '3',
-              name: 'Best Sellers',
-              parent_id: null,
-              children: [
-                { id: '3-1', name: 'Classic Bouquet', parent_id: '3' },
-                { id: '3-2', name: 'Premium Arrangement', parent_id: '3' },
-              ],
-            },
-          ]);
+          const fallbackCategories: Category[] = [
+            { id: '1-1', name: 'Birthday', parent_id: '1' },
+            { id: '1-2', name: 'Anniversary', parent_id: '1' },
+            { id: '1-3', name: 'Wedding', parent_id: '1' },
+            { id: '2-1', name: 'Roses', parent_id: '2' },
+            { id: '2-2', name: 'Lilies', parent_id: '2' },
+            { id: '2-3', name: 'Tulips', parent_id: '2' },
+            { id: '3-1', name: 'Classic Bouquet', parent_id: '3' },
+            { id: '3-2', name: 'Premium Arrangement', parent_id: '3' },
+          ];
+          setCategories(sortCategoriesByName(fallbackCategories));
           return;
         }
 
         if (data && data.length > 0) {
-          // Separate parents and children
-          const parentCategories: CategoryWithChildren[] = [];
-          const childCategories: Category[] = [];
-
-          data.forEach((cat: Category) => {
-            if (cat.parent_id === null) {
-              parentCategories.push({ ...cat, children: [] });
-            } else {
-              childCategories.push(cat);
-            }
-          });
-
-          // Assign children to their parents
-          parentCategories.forEach((parent) => {
-            parent.children = childCategories.filter(
-              (child) => child.parent_id === parent.id
-            );
-          });
-
-          setCategories(parentCategories);
+          const allCategories = data as Category[];
+          setCategories(sortCategoriesByName(allCategories));
         } else {
           // Use placeholder data if no categories found
-          setCategories([
-            {
-              id: '1',
-              name: 'Occasions',
-              parent_id: null,
-              children: [
-                { id: '1-1', name: 'Birthday', parent_id: '1' },
-                { id: '1-2', name: 'Anniversary', parent_id: '1' },
-                { id: '1-3', name: 'Wedding', parent_id: '1' },
-              ],
-            },
-            {
-              id: '2',
-              name: 'Floral',
-              parent_id: null,
-              children: [
-                { id: '2-1', name: 'Roses', parent_id: '2' },
-                { id: '2-2', name: 'Lilies', parent_id: '2' },
-                { id: '2-3', name: 'Tulips', parent_id: '2' },
-              ],
-            },
-            {
-              id: '3',
-              name: 'Best Sellers',
-              parent_id: null,
-              children: [
-                { id: '3-1', name: 'Classic Bouquet', parent_id: '3' },
-                { id: '3-2', name: 'Premium Arrangement', parent_id: '3' },
-              ],
-            },
-          ]);
+          const fallbackCategories: Category[] = [
+            { id: '1-1', name: 'Birthday', parent_id: '1' },
+            { id: '1-2', name: 'Anniversary', parent_id: '1' },
+            { id: '1-3', name: 'Wedding', parent_id: '1' },
+            { id: '2-1', name: 'Roses', parent_id: '2' },
+            { id: '2-2', name: 'Lilies', parent_id: '2' },
+            { id: '2-3', name: 'Tulips', parent_id: '2' },
+            { id: '3-1', name: 'Classic Bouquet', parent_id: '3' },
+            { id: '3-2', name: 'Premium Arrangement', parent_id: '3' },
+          ];
+          setCategories(sortCategoriesByName(fallbackCategories));
         }
       } catch (error) {
         console.error('Error loading categories:', error);
@@ -238,34 +179,16 @@ const Header: React.FC = () => {
                   {isLoadingCategories ? (
                     <p className="text-gray-500 text-sm font-serif uppercase tracking-wide" style={{ fontFamily: "'Playfair Display', serif" }}>Loading categories...</p>
                   ) : categories.length > 0 ? (
-                    <div className="columns-2 gap-8">
-                      {categories.map((parentCategory) => (
-                        <div 
-                          key={parentCategory.id}
-                          className="break-inside-avoid mb-6"
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                      {categories.map((category) => (
+                        <Link
+                          key={category.id}
+                          to={`/category/${getCategorySlug(category)}`}
+                          className="block text-sm text-gray-800 hover:text-[#6B8E23] transition-colors font-serif py-1"
+                          style={{ fontFamily: "'Playfair Display', serif" }}
                         >
-                          <Link
-                            to={`/category/${getCategorySlug(parentCategory)}`}
-                            className="block text-sm font-bold text-gray-900 uppercase tracking-wide mb-2 hover:text-[#6B8E23] transition-colors font-serif"
-                            style={{ fontFamily: "'Playfair Display', serif" }}
-                          >
-                            {parentCategory.name}
-                          </Link>
-                          {parentCategory.children && parentCategory.children.length > 0 && (
-                            <div className="pl-2 space-y-1 mt-1">
-                              {parentCategory.children.map((childCategory) => (
-                                <Link
-                                  key={childCategory.id}
-                                  to={`/category/${getCategorySlug(childCategory)}`}
-                                  className="block text-sm text-gray-600 hover:text-[#6B8E23] transition-colors font-serif py-1"
-                                  style={{ fontFamily: "'Playfair Display', serif" }}
-                                >
-                                  {childCategory.name}
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                          {category.name}
+                        </Link>
                       ))}
                     </div>
                   ) : (
@@ -362,38 +285,19 @@ const Header: React.FC = () => {
                           <p className="text-gray-500 text-sm font-serif uppercase tracking-wide" style={{ fontFamily: "'Playfair Display', serif" }}>Loading...</p>
                         ) : categories.length > 0 ? (
                           <>
-                            {categories.map((parentCategory) => (
-                              <div key={parentCategory.id} className="break-inside-avoid">
-                                <Link
-                                  to={`/category/${getCategorySlug(parentCategory)}`}
-                                  onClick={() => {
-                                    setIsMobileMenuOpen(false);
-                                    setShowMobileShopDropdown(false);
-                                  }}
-                                  className="block text-gray-900 font-bold uppercase tracking-wide mb-1 hover:text-[#6B8E23] transition-colors font-serif text-sm"
-                                  style={{ fontFamily: "'Playfair Display', serif" }}
-                                >
-                                  {parentCategory.name}
-                                </Link>
-                                {parentCategory.children && parentCategory.children.length > 0 && (
-                                  <div className="pl-2 space-y-1">
-                                    {parentCategory.children.map((childCategory) => (
-                                      <Link
-                                        key={childCategory.id}
-                                        to={`/category/${getCategorySlug(childCategory)}`}
-                                        onClick={() => {
-                                          setIsMobileMenuOpen(false);
-                                          setShowMobileShopDropdown(false);
-                                        }}
-                                        className="block text-gray-600 hover:text-[#6B8E23] transition-colors font-serif text-xs py-1"
-                                        style={{ fontFamily: "'Playfair Display', serif" }}
-                                      >
-                                        {childCategory.name}
-                                      </Link>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+                            {categories.map((category) => (
+                              <Link
+                                key={category.id}
+                                to={`/category/${getCategorySlug(category)}`}
+                                onClick={() => {
+                                  setIsMobileMenuOpen(false);
+                                  setShowMobileShopDropdown(false);
+                                }}
+                                className="block text-gray-700 hover:text-[#6B8E23] transition-colors font-serif text-sm py-1"
+                                style={{ fontFamily: "'Playfair Display', serif" }}
+                              >
+                                {category.name}
+                              </Link>
                             ))}
                             <div className="pt-2 border-t border-gray-200">
                               <Link

@@ -7,6 +7,11 @@ import { useCart } from '../context/CartContext';
 import { SIZE_OPTIONS, EXTRA_OPTIONS, EXTRA_ICONS, type SizeName } from '../lib/constants';
 import ExtraOptionSelector from '../components/ExtraOptionSelector';
 
+interface Category {
+  id: string;
+  name: string;
+}
+
 interface Product {
   id: number | string; // Can be number or UUID string
   name: string;
@@ -17,6 +22,8 @@ interface Product {
   in_stock?: boolean;
   sku?: string | null;
   has_extras?: boolean;
+  categories?: Category[];
+  category?: Category | null;
 }
 
 // Flying Flower Component for Cart Animation
@@ -192,10 +199,42 @@ const ProductDetail: React.FC = () => {
 
         console.log('ProductDetail: Query ID (final):', queryId, 'Type:', typeof queryId);
 
+        const productSelect = `
+          *,
+          product_categories(
+            category_id,
+            categories(
+              id,
+              name
+            )
+          )
+        `;
+
+        const normalizeProduct = (rawProduct: any): Product => {
+          const productCategories: Category[] = [];
+
+          if (rawProduct?.product_categories && Array.isArray(rawProduct.product_categories)) {
+            rawProduct.product_categories.forEach((pc: any) => {
+              if (pc.categories?.id) {
+                productCategories.push({
+                  id: pc.categories.id,
+                  name: pc.categories.name,
+                });
+              }
+            });
+          }
+
+          const { product_categories: _ignored, ...rest } = rawProduct || {};
+          return {
+            ...rest,
+            categories: productCategories,
+          };
+        };
+
         // Fetch product by ID - try with the ID as provided first
         let { data, error: productError } = await supabase
           .from('products')
-          .select('*')
+          .select(productSelect)
           .eq('id', queryId)
           .single();
 
@@ -206,7 +245,7 @@ const ProductDetail: React.FC = () => {
           if (!isNaN(numericId)) {
             const retryResult = await supabase
               .from('products')
-              .select('*')
+              .select(productSelect)
               .eq('id', numericId)
               .single();
             data = retryResult.data;
@@ -231,7 +270,7 @@ const ProductDetail: React.FC = () => {
             
             const { data: arrayData, error: arrayError } = await supabase
               .from('products')
-              .select('*')
+              .select(productSelect)
               .eq('id', queryId);
 
             console.log('ProductDetail: Array query - data:', arrayData);
@@ -241,7 +280,7 @@ const ProductDetail: React.FC = () => {
               setError(`Product not found: ${arrayError.message}`);
             } else if (arrayData && arrayData.length > 0) {
               console.log('ProductDetail: Found product in array:', arrayData[0]);
-              setProduct(arrayData[0] as Product);
+              setProduct(normalizeProduct(arrayData[0]));
             } else {
               setError('Product not found in database');
             }
@@ -255,7 +294,7 @@ const ProductDetail: React.FC = () => {
 
         if (data) {
           console.log('ProductDetail: Product loaded successfully:', data);
-          setProduct(data as Product);
+          setProduct(normalizeProduct(data));
         } else {
           console.warn('ProductDetail: No data returned from Supabase');
           setError('Product not found');
@@ -343,6 +382,11 @@ const ProductDetail: React.FC = () => {
       </div>
     );
   }
+
+  const isPerfectSpot = Boolean(
+    product.category?.name === 'Perfect Spot' ||
+      product.categories?.some((category) => category.name === 'Perfect Spot')
+  );
 
   // Get base price (sale_price if available, otherwise regular price)
   const basePrice = product.sale_price && product.sale_price < product.price 
@@ -447,6 +491,9 @@ const ProductDetail: React.FC = () => {
 
   // Handle add to cart logic with animation
   const handleAddToCart = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (isPerfectSpot) {
+      return;
+    }
     if (product && product.in_stock !== false && !isAdding) {
       setIsAdding(true);
       
@@ -549,78 +596,103 @@ const ProductDetail: React.FC = () => {
 
                 {/* Price */}
                 <div className="flex items-center">
-                  <span className="text-3xl font-bold text-stone-900 font-sans">
-                    ${finalPrice.toFixed(2)}
-                  </span>
-                  {originalPrice && (
-                    <del className="text-gray-500 line-through text-lg ml-2 font-sans">
-                      ${originalPrice.toFixed(2)}
-                    </del>
+                  {isPerfectSpot ? (
+                    <span className="text-3xl font-bold text-stone-900 font-sans">
+                      Contact Shop
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-bold text-stone-900 font-sans">
+                        ${finalPrice.toFixed(2)}
+                      </span>
+                      {originalPrice && (
+                        <del className="text-gray-500 line-through text-lg ml-2 font-sans">
+                          ${originalPrice.toFixed(2)}
+                        </del>
+                      )}
+                    </>
                   )}
                 </div>
+                {isPerfectSpot && (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-sm text-gray-700 font-sans">
+                      This is a seasonal flower arrangement. Please contact us to check availability.
+                    </p>
+                    <a
+                      href="tel:+61398773164"
+                      className="inline-flex items-center justify-center px-6 py-3 bg-stone-900 text-white font-bold rounded uppercase tracking-widest transition-all duration-200 font-sans hover:bg-stone-800"
+                    >
+                      Call Us to Order: (03) 9877 3164
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Form Options */}
               <div className="space-y-6">
                 {/* 1. SIZE Selector */}
-                <div>
-                  <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide font-sans">
-                    1. SIZE
-                  </label>
-                  <div className="grid grid-cols-3 gap-2 md:flex md:gap-4 mt-2">
-                    {sizeOptions.map((option) => (
-                      <button
-                        key={option.name}
-                        onClick={() => setSelectedSize(option.name)}
-                        className={`px-1 py-3 md:px-6 md:py-3 border-2 rounded transition-all duration-300 font-medium font-sans flex flex-col items-center justify-center ${
-                          selectedSize === option.name
-                            ? 'bg-stone-900 text-white border-stone-900'
-                            : 'border-stone-200 text-stone-900 hover:border-stone-900 hover:bg-stone-50'
-                        }`}
-                      >
-                        <span className="text-xs md:text-base font-semibold">
-                          {option.label}
-                        </span>
-                        {option.extraPrice > 0 && (
-                          <span className="text-[10px] md:text-sm mt-0.5">
-                            (+${option.extraPrice.toFixed(2)})
+                {!isPerfectSpot && (
+                  <div>
+                    <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide font-sans">
+                      1. SIZE
+                    </label>
+                    <div className="grid grid-cols-3 gap-2 md:flex md:gap-4 mt-2">
+                      {sizeOptions.map((option) => (
+                        <button
+                          key={option.name}
+                          onClick={() => setSelectedSize(option.name)}
+                          className={`px-1 py-3 md:px-6 md:py-3 border-2 rounded transition-all duration-300 font-medium font-sans flex flex-col items-center justify-center ${
+                            selectedSize === option.name
+                              ? 'bg-stone-900 text-white border-stone-900'
+                              : 'border-stone-200 text-stone-900 hover:border-stone-900 hover:bg-stone-50'
+                          }`}
+                        >
+                          <span className="text-xs md:text-base font-semibold">
+                            {option.label}
                           </span>
-                        )}
-                      </button>
-                    ))}
+                          {option.extraPrice > 0 && (
+                            <span className="text-[10px] md:text-sm mt-0.5">
+                              (+${option.extraPrice.toFixed(2)})
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 2. QUANTITY Selector */}
-                <div>
-                  <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide font-sans">
-                    2. QUANTITY
-                  </label>
-                  <div className="flex items-center border-2 border-stone-200 rounded w-fit mt-2 group focus-within:border-stone-900 transition-colors">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="px-4 py-2 text-xl text-gray-500 hover:text-stone-900 hover:bg-gray-100 transition font-sans"
-                    >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-16 text-center border-none focus:ring-0 font-bold font-sans"
-                    />
-                    <button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="px-4 py-2 text-xl text-gray-500 hover:text-stone-900 hover:bg-gray-100 transition font-sans"
-                    >
-                      +
-                    </button>
+                {!isPerfectSpot && (
+                  <div>
+                    <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide font-sans">
+                      2. QUANTITY
+                    </label>
+                    <div className="flex items-center border-2 border-stone-200 rounded w-fit mt-2 group focus-within:border-stone-900 transition-colors">
+                      <button
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="px-4 py-2 text-xl text-gray-500 hover:text-stone-900 hover:bg-gray-100 transition font-sans"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-16 text-center border-none focus:ring-0 font-bold font-sans"
+                      />
+                      <button
+                        onClick={() => setQuantity(quantity + 1)}
+                        className="px-4 py-2 text-xl text-gray-500 hover:text-stone-900 hover:bg-gray-100 transition font-sans"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 3. CHOOSE EXTRAS (Conditional) */}
-                {product.has_extras && (
+                {!isPerfectSpot && product.has_extras && (
                   <div>
                     <h3 className="text-center text-lg font-serif font-semibold text-stone-900 uppercase tracking-wide mb-6 mt-8">
                       CHOOSE EXTRAS TO MAKE IT MORE SPECIAL
@@ -675,143 +747,147 @@ const ProductDetail: React.FC = () => {
                 )}
 
                 {/* 4. MESSAGE BOX */}
-                <div>
-                  <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide mb-3 font-sans">
-                    {product.has_extras ? '4. CARD MESSAGE...' : '3. CARD MESSAGE...'}
-                  </label>
-                  
-                  {/* Multi-Message Checkbox (only show if quantity >= 2) */}
-                  {quantity >= 2 && (
-                    <div className="mb-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isMultiMessage}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setIsMultiMessage(checked);
-                            if (checked) {
-                              // Initialize array with quantity number of empty strings
-                              setCardMessages(Array.from({ length: quantity }, () => ''));
-                              setCardMessage(''); // Clear single message
-                            } else {
-                              // Reset to single message mode
-                              setCardMessages(['']);
-                            }
-                          }}
-                          className="w-4 h-4 text-stone-900 border-stone-300 rounded focus:ring-stone-900 focus:ring-2"
-                        />
-                        <span className="text-sm text-stone-700 font-sans">
-                          Send separate card messages for each item
-                        </span>
-                      </label>
-                    </div>
-                  )}
-
-                  {/* Single Message Mode */}
-                  {!isMultiMessage ? (
-                    <div className="bg-[#fff9f0] p-6 rounded-lg border border-stone-200 shadow-sm relative">
-                      {/* Personal Note Header */}
-                      <div className="flex items-center gap-2 mb-4">
-                        <FileText className="w-4 h-4 text-stone-600" />
-                        <span className="text-sm font-medium text-stone-700 font-serif italic">
-                          Personal Note
-                        </span>
-                      </div>
-                      
-                      {/* Textarea */}
-                      <textarea
-                        value={cardMessage}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value.length <= MAX_MESSAGE_LENGTH) {
-                            setCardMessage(value);
-                          }
-                        }}
-                        placeholder="Write your heartfelt message here..."
-                        maxLength={MAX_MESSAGE_LENGTH}
-                        className="w-full bg-transparent border-none resize-none focus:outline-none placeholder:text-stone-400 text-stone-800 font-serif text-base leading-relaxed"
-                        style={{ 
-                          fontFamily: "'Playfair Display', 'Georgia', serif",
-                          minHeight: '120px'
-                        }}
-                      />
-                      
-                      {/* Character Counter */}
-                      <div className="flex justify-end mt-2 pt-2 border-t border-stone-200">
-                        <span className={`text-xs font-sans ${
-                          cardMessage.length >= MAX_MESSAGE_LENGTH 
-                            ? 'text-red-500' 
-                            : 'text-stone-500'
-                        }`}>
-                          {cardMessage.length}/{MAX_MESSAGE_LENGTH}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Multi-Message Mode */
-                    <div className="space-y-4">
-                      {Array.from({ length: quantity }).map((_, index) => (
-                        <div key={index} className="bg-[#fff9f0] p-6 rounded-lg border border-stone-200 shadow-sm relative">
-                          {/* Personal Note Header */}
-                          <div className="flex items-center gap-2 mb-4">
-                            <FileText className="w-4 h-4 text-stone-600" />
-                            <span className="text-sm font-medium text-stone-700 font-serif italic">
-                              Card Message for Item #{index + 1}
-                            </span>
-                          </div>
-                          
-                          {/* Textarea */}
-                          <textarea
-                            value={cardMessages[index] || ''}
+                {!isPerfectSpot && (
+                  <div>
+                    <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide mb-3 font-sans">
+                      {product.has_extras ? '4. CARD MESSAGE...' : '3. CARD MESSAGE...'}
+                    </label>
+                    
+                    {/* Multi-Message Checkbox (only show if quantity >= 2) */}
+                    {quantity >= 2 && (
+                      <div className="mb-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isMultiMessage}
                             onChange={(e) => {
-                              const value = e.target.value;
-                              if (value.length <= MAX_MESSAGE_LENGTH) {
-                                const updatedMessages = [...cardMessages];
-                                updatedMessages[index] = value;
-                                setCardMessages(updatedMessages);
+                              const checked = e.target.checked;
+                              setIsMultiMessage(checked);
+                              if (checked) {
+                                // Initialize array with quantity number of empty strings
+                                setCardMessages(Array.from({ length: quantity }, () => ''));
+                                setCardMessage(''); // Clear single message
+                              } else {
+                                // Reset to single message mode
+                                setCardMessages(['']);
                               }
                             }}
-                            placeholder={`Message for item #${index + 1}...`}
-                            maxLength={MAX_MESSAGE_LENGTH}
-                            className="w-full bg-transparent border-none resize-none focus:outline-none placeholder:text-stone-400 text-stone-800 font-serif text-base leading-relaxed"
-                            style={{ 
-                              fontFamily: "'Playfair Display', 'Georgia', serif",
-                              minHeight: '120px'
-                            }}
+                            className="w-4 h-4 text-stone-900 border-stone-300 rounded focus:ring-stone-900 focus:ring-2"
                           />
-                          
-                          {/* Character Counter */}
-                          <div className="flex justify-end mt-2 pt-2 border-t border-stone-200">
-                            <span className={`text-xs font-sans ${
-                              (cardMessages[index] || '').length >= MAX_MESSAGE_LENGTH 
-                                ? 'text-red-500' 
-                                : 'text-stone-500'
-                            }`}>
-                              {(cardMessages[index] || '').length}/{MAX_MESSAGE_LENGTH}
-                            </span>
-                          </div>
+                          <span className="text-sm text-stone-700 font-sans">
+                            Send separate card messages for each item
+                          </span>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Single Message Mode */}
+                    {!isMultiMessage ? (
+                      <div className="bg-[#fff9f0] p-6 rounded-lg border border-stone-200 shadow-sm relative">
+                        {/* Personal Note Header */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <FileText className="w-4 h-4 text-stone-600" />
+                          <span className="text-sm font-medium text-stone-700 font-serif italic">
+                            Personal Note
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        
+                        {/* Textarea */}
+                        <textarea
+                          value={cardMessage}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value.length <= MAX_MESSAGE_LENGTH) {
+                              setCardMessage(value);
+                            }
+                          }}
+                          placeholder="Write your heartfelt message here..."
+                          maxLength={MAX_MESSAGE_LENGTH}
+                          className="w-full bg-transparent border-none resize-none focus:outline-none placeholder:text-stone-400 text-stone-800 font-serif text-base leading-relaxed"
+                          style={{ 
+                            fontFamily: "'Playfair Display', 'Georgia', serif",
+                            minHeight: '120px'
+                          }}
+                        />
+                        
+                        {/* Character Counter */}
+                        <div className="flex justify-end mt-2 pt-2 border-t border-stone-200">
+                          <span className={`text-xs font-sans ${
+                            cardMessage.length >= MAX_MESSAGE_LENGTH 
+                              ? 'text-red-500' 
+                              : 'text-stone-500'
+                          }`}>
+                            {cardMessage.length}/{MAX_MESSAGE_LENGTH}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Multi-Message Mode */
+                      <div className="space-y-4">
+                        {Array.from({ length: quantity }).map((_, index) => (
+                          <div key={index} className="bg-[#fff9f0] p-6 rounded-lg border border-stone-200 shadow-sm relative">
+                            {/* Personal Note Header */}
+                            <div className="flex items-center gap-2 mb-4">
+                              <FileText className="w-4 h-4 text-stone-600" />
+                              <span className="text-sm font-medium text-stone-700 font-serif italic">
+                                Card Message for Item #{index + 1}
+                              </span>
+                            </div>
+                            
+                            {/* Textarea */}
+                            <textarea
+                              value={cardMessages[index] || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value.length <= MAX_MESSAGE_LENGTH) {
+                                  const updatedMessages = [...cardMessages];
+                                  updatedMessages[index] = value;
+                                  setCardMessages(updatedMessages);
+                                }
+                              }}
+                              placeholder={`Message for item #${index + 1}...`}
+                              maxLength={MAX_MESSAGE_LENGTH}
+                              className="w-full bg-transparent border-none resize-none focus:outline-none placeholder:text-stone-400 text-stone-800 font-serif text-base leading-relaxed"
+                              style={{ 
+                                fontFamily: "'Playfair Display', 'Georgia', serif",
+                                minHeight: '120px'
+                              }}
+                            />
+                            
+                            {/* Character Counter */}
+                            <div className="flex justify-end mt-2 pt-2 border-t border-stone-200">
+                              <span className={`text-xs font-sans ${
+                                (cardMessages[index] || '').length >= MAX_MESSAGE_LENGTH 
+                                  ? 'text-red-500' 
+                                  : 'text-stone-500'
+                              }`}>
+                                {(cardMessages[index] || '').length}/{MAX_MESSAGE_LENGTH}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* CTA Buttons (Desktop) */}
-              <div className="hidden md:flex flex-col sm:flex-row gap-3 mt-8">
-                <button
-                  disabled={product.in_stock === false || isAdding}
-                  onClick={handleAddToCart}
-                  className={`flex-1 bg-stone-900 text-white text-lg font-bold py-4 rounded uppercase tracking-widest transition-all duration-200 font-sans ${
-                    product.in_stock === false || isAdding
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'hover:bg-stone-800 active:scale-[0.98]'
-                  }`}
-                >
-                  {product.in_stock === false ? 'Out of Stock' : isAdding ? 'Adding...' : 'ADD TO CART'}
-                </button>
-              </div>
+              {!isPerfectSpot && (
+                <div className="hidden md:flex flex-col sm:flex-row gap-3 mt-8">
+                  <button
+                    disabled={product.in_stock === false || isAdding}
+                    onClick={handleAddToCart}
+                    className={`flex-1 bg-stone-900 text-white text-lg font-bold py-4 rounded uppercase tracking-widest transition-all duration-200 font-sans ${
+                      product.in_stock === false || isAdding
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'hover:bg-stone-800 active:scale-[0.98]'
+                    }`}
+                  >
+                    {product.in_stock === false ? 'Out of Stock' : isAdding ? 'Adding...' : 'ADD TO CART'}
+                  </button>
+                </div>
+              )}
             </div>
       </main>
 
@@ -827,30 +903,41 @@ const ProductDetail: React.FC = () => {
 
       {/* Sticky Bottom Bar (Mobile Only) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 shadow-lg w-full max-w-[100vw]" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-        <div className="container mx-auto flex items-center justify-between gap-4 w-full">
-          {/* Left: Total Price */}
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-500 font-sans uppercase tracking-wide">Total</span>
-            <span className="text-2xl font-bold text-stone-900 font-sans">
-              ${finalPrice.toFixed(2)}
-            </span>
-          </div>
-
-          {/* Right: Button */}
-          <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
-            <button
-              disabled={product.in_stock === false || isAdding}
-              onClick={(e) => handleAddToCart(e)}
-              className={`flex-1 px-6 py-3 bg-stone-900 text-white font-bold rounded-lg uppercase tracking-wide transition-all duration-200 font-sans ${
-                product.in_stock === false || isAdding
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'hover:bg-stone-800 active:scale-[0.98]'
-              }`}
+        {isPerfectSpot ? (
+          <div className="container mx-auto flex items-center justify-center gap-4 w-full">
+            <a
+              href="tel:+61398773164"
+              className="flex-1 px-6 py-3 bg-stone-900 text-white font-bold rounded-lg uppercase tracking-wide transition-all duration-200 font-sans text-center hover:bg-stone-800"
             >
-              {product.in_stock === false ? 'Out of Stock' : isAdding ? 'Adding...' : 'Add to Cart'}
-            </button>
+              Call Us to Order: (03) 9877 3164
+            </a>
           </div>
-        </div>
+        ) : (
+          <div className="container mx-auto flex items-center justify-between gap-4 w-full">
+            {/* Left: Total Price */}
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500 font-sans uppercase tracking-wide">Total</span>
+              <span className="text-2xl font-bold text-stone-900 font-sans">
+                ${finalPrice.toFixed(2)}
+              </span>
+            </div>
+
+            {/* Right: Button */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+              <button
+                disabled={product.in_stock === false || isAdding}
+                onClick={(e) => handleAddToCart(e)}
+                className={`flex-1 px-6 py-3 bg-stone-900 text-white font-bold rounded-lg uppercase tracking-wide transition-all duration-200 font-sans ${
+                  product.in_stock === false || isAdding
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'hover:bg-stone-800 active:scale-[0.98]'
+                }`}
+              >
+                {product.in_stock === false ? 'Out of Stock' : isAdding ? 'Adding...' : 'Add to Cart'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

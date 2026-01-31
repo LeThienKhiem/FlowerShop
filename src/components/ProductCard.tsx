@@ -16,6 +16,7 @@ export interface Product {
   slug?: string;
   categories?: Category[]; // Array of categories for the product
   has_extras?: boolean; // Whether the product supports extra add-ons
+  category?: Category | null; // Optional single category shape
 }
 
 interface ProductCardProps {
@@ -23,6 +24,11 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const isPerfectSpot = Boolean(
+    product.category?.name === 'Perfect Spot' ||
+      product.categories?.some((category) => category.name === 'Perfect Spot')
+  );
+
   // Determine display price and original price
   const displayPrice = product.sale_price && product.sale_price < product.price 
     ? product.sale_price 
@@ -64,22 +70,30 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {product.name}
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Only show strikethrough price if original price is greater than display price */}
-          {originalPrice && originalPrice > displayPrice && (
+          {isPerfectSpot ? (
+            <span className="text-lg font-bold text-[#6B8E23] font-sans">
+              Contact Shop
+            </span>
+          ) : (
             <>
-              <del className="text-sm text-gray-500 font-sans">
-                ${originalPrice.toFixed(2)}
-              </del>
-              {discountPercentage > 0 && (
-                <span className="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">
-                  -{discountPercentage}%
-                </span>
+              {/* Only show strikethrough price if original price is greater than display price */}
+              {originalPrice && originalPrice > displayPrice && (
+                <>
+                  <del className="text-sm text-gray-500 font-sans">
+                    ${originalPrice.toFixed(2)}
+                  </del>
+                  {discountPercentage > 0 && (
+                    <span className="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded font-sans">
+                      -{discountPercentage}%
+                    </span>
+                  )}
+                </>
               )}
+              <span className="text-lg font-bold text-[#6B8E23] font-sans">
+                ${displayPrice.toFixed(2)}
+              </span>
             </>
           )}
-          <span className="text-lg font-bold text-[#6B8E23] font-sans">
-            ${displayPrice.toFixed(2)}
-          </span>
         </div>
       </div>
     </Link>

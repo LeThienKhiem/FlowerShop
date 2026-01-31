@@ -1066,9 +1066,8 @@ const FloralShop: React.FC = () => {
             {activeAboutTab === 'hours' && (
               <div className="text-center text-gray-700 font-sans">
                 <p className="max-w-2xl mx-auto leading-relaxed">
-                  Monday - Friday: 9:00 AM - 6:00 PM<br />
-                  Saturday: 9:00 AM - 5:00 PM<br />
-                  Sunday: 10:00 AM - 4:00 PM
+                  Monday - Saturday: 9:00 AM - 6:30 PM<br />
+                  Sunday: 10:30 AM - 6:00 PM
                 </p>
               </div>
             )}
