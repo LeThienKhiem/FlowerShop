@@ -15,6 +15,7 @@ interface EmailItem {
   price: number;
   imageUrl?: string | null;
   selectedOptions?: Record<string, any> | null;
+  selected_options?: Record<string, any> | null;
   selectedSize?: string;
   recipientInfo?: RecipientInfo | null;
 }
@@ -36,12 +37,28 @@ const formatCurrency = (amount: number): string => {
   return `$${amount.toFixed(2)}`;
 };
 
-const extractSize = (item: EmailItem): string | null => {
-  const size = item.selectedOptions?.Size ?? item.selectedSize;
-  if (!size) return null;
-  if (typeof size === 'string') return size;
-  if (typeof size === 'object' && size?.label) return String(size.label);
-  return String(size);
+const EXCLUDED_OPTION_KEYS = new Set(['sku', 'id', 'product_id']);
+
+const getSelectedOptions = (item: EmailItem): Record<string, any> => {
+  const raw = item.selected_options ?? item.selectedOptions;
+  if (!raw || typeof raw !== 'object') return {};
+  return raw;
+};
+
+const formatOptionValue = (value: any): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') {
+    if ('name' in value && typeof value.name === 'string') {
+      const price = Number((value as any).price ?? 0);
+      const priceText = price > 0 ? ` (+${formatCurrency(price)})` : '';
+      return `${value.name}${priceText}`;
+    }
+    if ('label' in value && typeof value.label === 'string') {
+      return value.label;
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
 };
 
 const getImageUrl = (item: EmailItem): string => {
@@ -72,7 +89,11 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
 
           <Section>
             {items.map((item, index) => {
-              const sizeText = extractSize(item);
+              const options = getSelectedOptions(item);
+              const optionEntries = Object.entries(options).filter(
+                ([key]) => !EXCLUDED_OPTION_KEYS.has(key)
+              );
+              const rowTotal = item.quantity * item.price;
               return (
                 <Section key={`${item.name}-${index}`} style={{ marginBottom: '16px', borderBottom: '1px solid #e5e7eb', paddingBottom: '16px' }}>
                   <Section style={{ display: 'flex', gap: '12px' }}>
@@ -85,13 +106,24 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
                     />
                     <Section>
                       <Text style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>{item.name}</Text>
-                      {sizeText && (
-                        <Text style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0' }}>
-                          Size: {sizeText}
-                        </Text>
+                      {optionEntries.length > 0 && (
+                        <Section style={{ marginTop: '6px' }}>
+                          {optionEntries.map(([key, value]) => {
+                            const displayValue = formatOptionValue(value);
+                            if (!displayValue) return null;
+                            return (
+                              <Text key={key} style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0 0' }}>
+                                • {key}: {displayValue}
+                              </Text>
+                            );
+                          })}
+                        </Section>
                       )}
-                      <Text style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0' }}>
+                      <Text style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0' }}>
                         Qty: {item.quantity} x {formatCurrency(item.price)}
+                      </Text>
+                      <Text style={{ fontSize: '13px', fontWeight: 600, margin: '4px 0 0' }}>
+                        {formatCurrency(rowTotal)}
                       </Text>
                     </Section>
                   </Section>
@@ -144,6 +176,9 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
           <Section style={{ marginTop: '16px' }}>
             <Text style={{ fontSize: '12px', color: '#6b7280', margin: 0, textAlign: 'center' }}>
               Thank you for your order. We are preparing it now.
+            </Text>
+            <Text style={{ fontSize: '12px', color: '#8898aa', margin: '6px 0 0', textAlign: 'center' }}>
+              Magnolia Flowers | ABN 41 644 261 816
             </Text>
             <Text
               style={{

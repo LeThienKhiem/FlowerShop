@@ -1509,6 +1509,52 @@ const CheckoutPage: React.FC = () => {
                     </div>
                   </div>
 
+                  <div className="mt-4">
+                    <label htmlFor="deliveryDate" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
+                      {shippingMethod === 'delivery' ? 'Delivery Date' : 'Pickup Date'}
+                    </label>
+                    <input
+                      type="date"
+                      id="deliveryDate"
+                      value={deliveryDate}
+                      onChange={(e) => {
+                        const selectedDate = e.target.value;
+                        if (selectedDate && !isDateAvailable(selectedDate)) {
+                          alert('This date is not available for delivery. Please select another date.');
+                          return;
+                        }
+                        setDeliveryDate(selectedDate);
+                        if (errors.deliveryDate) {
+                          setErrors((prev) => {
+                            const newErrors = { ...prev };
+                            delete newErrors.deliveryDate;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      min={new Date().toISOString().split('T')[0]}
+                      className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
+                        errors.deliveryDate
+                          ? 'border-red-500 focus:border-red-600'
+                          : 'border-gray-200 focus:border-stone-900'
+                      }`}
+                    />
+                    {errors.deliveryDate && (
+                      <p className="mt-1 text-sm text-red-500 font-sans">{errors.deliveryDate}</p>
+                    )}
+                    {deliveryDate && checkIsSeasonal(deliveryDate) && (
+                      <p className="mt-2 text-sm text-amber-600 font-sans flex items-center gap-1">
+                        <span className="font-semibold">⚠️ Seasonal Date:</span>
+                        <span>An additional $5 surcharge applies to this date.</span>
+                      </p>
+                    )}
+                    {deliveryDate && checkIsClosed(deliveryDate) && (
+                      <p className="mt-2 text-sm text-red-600 font-sans">
+                        This date is not available for delivery.
+                      </p>
+                    )}
+                  </div>
+
                   {shippingMethod === 'delivery' && (
                     <div className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
                       <label className="flex items-start gap-3 cursor-pointer">
@@ -1950,52 +1996,6 @@ const CheckoutPage: React.FC = () => {
                       />
                     </div>
                   )}
-
-                  <div>
-                    <label htmlFor="deliveryDate" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                      {shippingMethod === 'delivery' ? 'Delivery Date' : 'Pickup Date'}
-                    </label>
-                    <input
-                      type="date"
-                      id="deliveryDate"
-                      value={deliveryDate}
-                      onChange={(e) => {
-                        const selectedDate = e.target.value;
-                        if (selectedDate && !isDateAvailable(selectedDate)) {
-                          alert('This date is not available for delivery. Please select another date.');
-                          return;
-                        }
-                        setDeliveryDate(selectedDate);
-                        if (errors.deliveryDate) {
-                          setErrors((prev) => {
-                            const newErrors = { ...prev };
-                            delete newErrors.deliveryDate;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                      min={new Date().toISOString().split('T')[0]}
-                      className={`w-full p-3 border rounded focus:outline-none transition font-sans ${
-                        errors.deliveryDate
-                          ? 'border-red-500 focus:border-red-600'
-                          : 'border-gray-200 focus:border-stone-900'
-                      }`}
-                    />
-                    {errors.deliveryDate && (
-                      <p className="mt-1 text-sm text-red-500 font-sans">{errors.deliveryDate}</p>
-                    )}
-                    {deliveryDate && checkIsSeasonal(deliveryDate) && (
-                      <p className="mt-2 text-sm text-amber-600 font-sans flex items-center gap-1">
-                        <span className="font-semibold">⚠️ Seasonal Date:</span>
-                        <span>An additional $5 surcharge applies to this date.</span>
-                      </p>
-                    )}
-                    {deliveryDate && checkIsClosed(deliveryDate) && (
-                      <p className="mt-2 text-sm text-red-600 font-sans">
-                        This date is not available for delivery.
-                      </p>
-                    )}
-                  </div>
 
                 </div>
             </div>
