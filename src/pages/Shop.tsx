@@ -142,11 +142,17 @@ const Shop: React.FC = () => {
             description,
             in_stock,
             created_at,
+            category:categories!inner(
+              id,
+              name,
+              slug
+            ),
             product_categories(
               category_id,
               categories(
                 id,
-                name
+                name,
+                slug
               )
             )
           `)
@@ -167,7 +173,7 @@ const Shop: React.FC = () => {
           setAllProducts([]);
         } else if (data) {
           const transformedProducts: ProductWithCategories[] = (data as any[]).map((product) => {
-            const categories: { id: string; name: string }[] = [];
+            const categories: { id: string; name: string; slug?: string | null }[] = [];
 
             if (product.product_categories && Array.isArray(product.product_categories)) {
               product.product_categories.forEach((pc: any) => {
@@ -175,6 +181,7 @@ const Shop: React.FC = () => {
                   categories.push({
                     id: pc.categories.id,
                     name: pc.categories.name,
+                    slug: pc.categories.slug ?? null,
                   });
                 }
               });
@@ -183,6 +190,7 @@ const Shop: React.FC = () => {
             return {
               ...product,
               categories,
+              category: product.category ?? categories[0] ?? null,
             };
           });
 
@@ -560,15 +568,25 @@ const Shop: React.FC = () => {
         )}
 
         {isLoadingProducts ? (
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          <div className="flex flex-wrap justify-center gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
-              <ProductSkeleton key={`skeleton-${i}`} />
+              <div
+                key={`skeleton-${i}`}
+                className="w-full sm:w-[300px]"
+              >
+                <ProductSkeleton />
+              </div>
             ))}
           </div>
         ) : filteredProducts.length > 0 ? (
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          <div className="flex flex-wrap justify-center gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <div
+                key={product.id}
+                className="w-full sm:w-[300px]"
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         ) : (

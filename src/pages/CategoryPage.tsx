@@ -78,10 +78,29 @@ const CategoryPage: React.FC = () => {
 
         const productIds = productCategories.map(pc => pc.product_id);
 
-        // Fetch products
+        const productSelect = `
+          id,
+          name,
+          price,
+          sale_price,
+          images,
+          description,
+          in_stock,
+          created_at,
+          product_categories(
+            category_id,
+            categories(
+              id,
+              name,
+              slug
+            )
+          )
+        `;
+
+        // Fetch products with category relation data for ProductCard
         const { data: productsData, error: productsError } = await supabase
           .from('products')
-          .select('*')
+          .select(productSelect)
           .in('id', productIds)
           .eq('in_stock', true)
           .order('created_at', { ascending: false });
@@ -90,7 +109,42 @@ const CategoryPage: React.FC = () => {
           console.error('Error fetching products:', productsError);
           setError('Error loading products');
         } else if (productsData) {
-          setProducts(productsData as Product[]);
+          const transformedProducts: Product[] = (productsData as any[]).map((product) => {
+            const categories: { id: string; name: string; slug?: string | null }[] = [];
+
+            if (product.product_categories && Array.isArray(product.product_categories)) {
+              product.product_categories.forEach((pc: any) => {
+                if (pc.categories?.id) {
+                  categories.push({
+                    id: pc.categories.id,
+                    name: pc.categories.name,
+                    slug: pc.categories.slug ?? null,
+                  });
+                }
+              });
+            }
+
+            if (categories.length === 0 && categoryData?.id && categoryData?.name) {
+              categories.push({
+                id: String(categoryData.id),
+                name: categoryData.name,
+                slug: categoryData.slug ?? null,
+              });
+            }
+
+            const { product_categories: _ignored, ...rest } = product || {};
+            return {
+              ...rest,
+              categories,
+              category: {
+                id: String(categoryData.id),
+                name: categoryData.name,
+                slug: categoryData.slug ?? null,
+              },
+            };
+          });
+
+          setProducts(transformedProducts);
         }
 
         setIsLoading(false);
@@ -114,9 +168,14 @@ const CategoryPage: React.FC = () => {
       <main className="py-16 px-6 flex-1">
         <div className="max-w-7xl mx-auto">
           {isLoading ? (
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            <div className="flex flex-wrap justify-center gap-6">
               {Array.from({ length: 8 }).map((_, i) => (
-                <ProductSkeleton key={`category-skeleton-${i}`} />
+                <div
+                  key={`category-skeleton-${i}`}
+                  className="w-full sm:w-[300px]"
+                >
+                  <ProductSkeleton />
+                </div>
               ))}
             </div>
           ) : error ? (
@@ -130,9 +189,14 @@ const CategoryPage: React.FC = () => {
               </h1>
               
               {products.length > 0 ? (
-                <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+                <div className="flex flex-wrap justify-center gap-6">
                   {products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <div
+                      key={product.id}
+                      className="w-full sm:w-[300px]"
+                    >
+                      <ProductCard product={product} />
+                    </div>
                   ))}
                 </div>
               ) : (

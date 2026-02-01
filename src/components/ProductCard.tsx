@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 export interface Category {
   id: string;
   name: string;
+  slug?: string | null;
 }
 
 export interface Product {
@@ -26,7 +27,10 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const isPerfectSpot = Boolean(
     product.category?.name === 'Perfect Spot' ||
-      product.categories?.some((category) => category.name === 'Perfect Spot')
+      product.category?.slug === 'perfect-spot' ||
+      product.categories?.some(
+        (category) => category.name === 'Perfect Spot' || category.slug === 'perfect-spot'
+      )
   );
 
   // Determine display price and original price
