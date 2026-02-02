@@ -8,6 +8,10 @@ interface Category {
   slug?: string | null;
 }
 
+interface CategoryWithProducts extends Category {
+  product_categories?: { product_id: string }[];
+}
+
 interface CategoryBarProps {
   activeSlug?: string | null;
 }
@@ -48,28 +52,34 @@ const CategoryBar: React.FC<CategoryBarProps> = ({ activeSlug = null }) => {
   useEffect(() => {
     async function loadCategories() {
       try {
-        // Fetch ALL categories (no parent_id filter) - both parents and children
+        // Only show categories that contain products
         const { data, error } = await supabase
           .from('categories')
-          .select('id, name, slug')
+          .select('id, name, slug, product_categories!inner(product_id)')
           .order('display_order', { ascending: true });
 
         if (error) {
           console.error('Error fetching categories:', error);
         } else if (data) {
-          setCategories(data as Category[]);
+          const filtered = (data as CategoryWithProducts[])
+            .filter((category) => Array.isArray(category.product_categories) && category.product_categories.length > 0)
+            .map(({ id, name, slug }) => ({ id, name, slug }));
+          setCategories(filtered);
         }
       } catch (error) {
         console.error('Error loading categories:', error);
-        // Fallback: Try fetching all categories without any join
+        // Fallback: Try fetching categories that have products
         try {
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('categories')
-            .select('id, name, slug')
+            .select('id, name, slug, product_categories!inner(product_id)')
             .order('display_order', { ascending: true });
 
           if (!fallbackError && fallbackData) {
-            setCategories(fallbackData as Category[]);
+            const filtered = (fallbackData as CategoryWithProducts[])
+              .filter((category) => Array.isArray(category.product_categories) && category.product_categories.length > 0)
+              .map(({ id, name, slug }) => ({ id, name, slug }));
+            setCategories(filtered);
           }
         } catch (fallbackErr) {
           console.error('Fallback category fetch failed:', fallbackErr);

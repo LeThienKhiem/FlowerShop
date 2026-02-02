@@ -9,7 +9,7 @@ import { useCart, CartItem } from '../context/CartContext';
 import { OrderData } from '../lib/email';
 import { supabase } from '../lib/supabase';
 import { useShopDates } from '../hooks/useShopDates';
-import PostcodeCombobox, { DELIVERY_ZONES } from '../components/ui/PostcodeCombobox';
+import PostcodeCombobox, { DELIVERY_ZONES, normalizeSuburbName } from '../components/ui/PostcodeCombobox';
 import NewOrderEmail from '../emails/NewOrderEmail';
 import { getDisplayOrderId } from '../lib/orderId';
 
@@ -20,6 +20,7 @@ interface AddressData {
   address: string;
   state: string;
   postcode: string;
+  suburb?: string;
   phone: string;
 }
 
@@ -385,6 +386,7 @@ const CheckoutPage: React.FC = () => {
   const [address, setAddress] = useState('');
   const [state, setState] = useState('VIC'); // Default to Victoria
   const [selectedPostcode, setSelectedPostcode] = useState('');
+  const [selectedDeliverySuburb, setSelectedDeliverySuburb] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryZonePrice, setDeliveryZonePrice] = useState<number | null>(null);
 
@@ -472,14 +474,30 @@ const CheckoutPage: React.FC = () => {
       )
     : [];
 
+  const findZoneForAddress = (postcode?: string, suburb?: string) => {
+    if (!postcode) return null;
+    const normalizedSuburb = suburb ? normalizeSuburbName(suburb) : '';
+    if (normalizedSuburb) {
+      const exactZone = DELIVERY_ZONES.find(
+        (z) => z.postcode === postcode && normalizeSuburbName(z.suburb) === normalizedSuburb
+      );
+      if (exactZone) return exactZone;
+    }
+    return DELIVERY_ZONES.find((z) => z.postcode === postcode) || null;
+  };
+
   // Auto-fill form from passed state (if postcode was passed from cart)
   useEffect(() => {
     if (passedState?.shippingAddress?.postcode) {
       const postcode = passedState.shippingAddress.postcode;
-      const zone = DELIVERY_ZONES.find((z) => z.postcode === postcode);
+      const suburb = passedState.shippingAddress.suburb;
+      const zone = findZoneForAddress(postcode, suburb);
       if (zone) {
         setSelectedPostcode(postcode);
         setDeliveryZonePrice(zone.price);
+        if (suburb) {
+          setSelectedDeliverySuburb(suburb);
+        }
       }
     }
   }, [passedState]);
@@ -517,6 +535,7 @@ const CheckoutPage: React.FC = () => {
               address: '',
               state: 'VIC',
               postcode: '',
+              suburb: '',
               phone: '',
             };
           }
@@ -551,6 +570,7 @@ const CheckoutPage: React.FC = () => {
         address: '',
         state: 'VIC',
         postcode: '',
+        suburb: '',
         phone: '',
       };
     });
@@ -602,10 +622,11 @@ const CheckoutPage: React.FC = () => {
   const buildRecipientInfoFromSplit = (shipment: AddressData | undefined, message?: string) => {
     if (!shipment) return null;
     const name = `${shipment.firstName ?? ''} ${shipment.lastName ?? ''}`.trim();
+    const suburb = shipment.suburb || getSuburbFromPostcode(shipment.postcode) || undefined;
     return {
       name: name || undefined,
       address: shipment.address || undefined,
-      suburb: shipment.postcode || undefined,
+      suburb: suburb,
       state: shipment.state || undefined,
       phone: shipment.phone || undefined,
       message: message?.trim() || undefined,
@@ -616,22 +637,29 @@ const CheckoutPage: React.FC = () => {
     const hasMessage = globalMessage.trim();
     if (shippingMethod !== 'delivery' && !hasMessage) return null;
     const name = `${recipientFirstName ?? ''} ${recipientLastName ?? ''}`.trim();
+    const suburb = getSuburbFromPostcode(selectedPostcode, selectedDeliverySuburb) || undefined;
     return {
       name: name || undefined,
       address: address || undefined,
-      suburb: selectedPostcode || undefined,
+      suburb: suburb,
       state: state || undefined,
       phone: recipientPhone || undefined,
       message: hasMessage || undefined,
     };
   };
 
-  const getSuburbFromPostcode = (postcode?: string): string | undefined => {
+  const getSuburbFromPostcode = (postcode?: string, suburb?: string): string | undefined => {
     if (!postcode) return undefined;
+    if (suburb) {
+      const normalizedSuburb = normalizeSuburbName(suburb);
+      const exactZone = DELIVERY_ZONES.find(
+        (z) => z.postcode === postcode && normalizeSuburbName(z.suburb) === normalizedSuburb
+      );
+      if (exactZone) return exactZone.suburb;
+    }
     const zone = DELIVERY_ZONES.find((z) => z.postcode === postcode);
     if (!zone) return undefined;
-    const match = zone.label.match(/^\d+\s*-\s*(.+)/);
-    return match ? match[1] : zone.label;
+    return zone.suburb;
   };
 
   const updateItemMessage = (splitKey: string, value: string) => {
@@ -663,7 +691,7 @@ const CheckoutPage: React.FC = () => {
         if (!shipment.postcode || shipment.postcode === 'other' || shipment.state !== 'VIC') {
           return total;
         }
-        const zone = DELIVERY_ZONES.find((z) => z.postcode === shipment.postcode);
+        const zone = findZoneForAddress(shipment.postcode, shipment.suburb);
         return total + (zone ? zone.price : 0);
       }, 0);
     }
@@ -1222,10 +1250,14 @@ const CheckoutPage: React.FC = () => {
               address: address,
               state: state,
               postcode: selectedPostcode,
+              suburb: selectedDeliverySuburb,
               phone: recipientPhone,
             };
         const primaryRecipientName = `${primaryRecipient?.firstName ?? ''} ${primaryRecipient?.lastName ?? ''}`.trim();
-        const primaryRecipientSuburb = getSuburbFromPostcode(primaryRecipient?.postcode);
+        const primaryRecipientSuburb = getSuburbFromPostcode(
+          primaryRecipient?.postcode,
+          primaryRecipient?.suburb
+        );
         const primaryDeliveryDate = isMultiShipping
           ? multiDeliveryDates[expandedItems[0]?.key]
           : deliveryDate;
@@ -1772,6 +1804,7 @@ const CheckoutPage: React.FC = () => {
                                 if (e.target.value === 'OTHER') {
                                   setSelectedPostcode('');
                                   setDeliveryZonePrice(null);
+                                setSelectedDeliverySuburb('');
                                   clearFormError('postcode');
                                 }
                                 if (e.target.value !== 'VIC') {
@@ -1807,6 +1840,10 @@ const CheckoutPage: React.FC = () => {
                                   }
                                 }}
                                 onPriceChange={setDeliveryZonePrice}
+                                onZoneChange={(zone) => {
+                                  setSelectedDeliverySuburb(zone?.suburb || '');
+                                }}
+                                preferredSuburb={selectedDeliverySuburb}
                                 inputName="shipping_estimate"
                                 inputAutoComplete="new-password"
                                 inputId="postcode"
@@ -1897,6 +1934,7 @@ const CheckoutPage: React.FC = () => {
                           address: '',
                           state: 'VIC',
                           postcode: '',
+                          suburb: '',
                           phone: '',
                         };
                         return (
@@ -1981,6 +2019,10 @@ const CheckoutPage: React.FC = () => {
                                   <PostcodeCombobox
                                     value={splitAddress.postcode || ''}
                                     onChange={(postcode) => updateSplitShipment(splitKey, 'postcode', postcode)}
+                                    onZoneChange={(zone) =>
+                                      updateSplitShipment(splitKey, 'suburb', zone?.suburb || '')
+                                    }
+                                    preferredSuburb={splitAddress.suburb}
                                     inputName={`shipping_estimate_split_${splitKey}`}
                                     inputAutoComplete="new-password"
                                   />

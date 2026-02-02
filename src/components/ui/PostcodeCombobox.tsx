@@ -5,49 +5,42 @@ import { X } from 'lucide-react';
 export interface DeliveryZone {
   postcode: string;
   price: number;
-  label: string;
+  suburb: string;
 }
 
 export const DELIVERY_ZONES: DeliveryZone[] = [
-  { postcode: "3130", price: 10, label: "3130 - Blackburn South" },
-  { postcode: "3129", price: 20, label: "3129 - Box Hill North" },
-  { postcode: "3131", price: 10, label: "3131 - Forest Hill" },
-  { postcode: "3104", price: 20, label: "3104 - Balwyn North" },
-  { postcode: "3103", price: 20, label: "3103 - Balwyn" },
-  { postcode: "3125", price: 15, label: "3125 - Burwood" },
-  { postcode: "3128", price: 15, label: "3128 - Box Hill" },
-  { postcode: "3151", price: 15, label: "3151 - Burwood East" },
-  { postcode: "3109", price: 20, label: "3109 - Doncaster East" },
-  { postcode: "3108", price: 20, label: "3108 - Doncaster" },
-  { postcode: "3132", price: 15, label: "3132 - Mitcham" },
-  { postcode: "3133", price: 15, label: "3133 - Vermont" },
-  { postcode: "3105", price: 20, label: "3105 - Bulleen" },
-  { postcode: "3124", price: 20, label: "3124 - Camberwell" },
-  { postcode: "3126", price: 20, label: "3126 - Canterbury" },
-  { postcode: "3148", price: 20, label: "3148 - Chadstone" },
-  { postcode: "3111", price: 20, label: "3111 - Donvale" },
-  { postcode: "3122", price: 20, label: "3122 - Hawthorn" },
-  { postcode: "3149", price: 20, label: "3149 - Mount Waverley" },
-  { postcode: "3127", price: 20, label: "3127 - Surrey Hills" },
-  { postcode: "3107", price: 20, label: "3107 - Templestowe" },
-  { postcode: "3106", price: 20, label: "3106 - Templestowe Lower" },
-  { postcode: "3121", price: 20, label: "3121 - Richmond / Burnley" },
-  { postcode: "3169", price: 20, label: "3169 - Clarinda" },
-  { postcode: "3142", price: 20, label: "3142 - Toorak / Hawksburn" },
-  { postcode: "3131", price: 15, label: "3131 - Nunawading" },
-  { postcode: "3134", price: 20, label: "3134 - Ringwood" },
-  { postcode: "3135", price: 20, label: "3135 - Heathmont" },
-  { postcode: "3130", price: 10, label: "3130 - Blackburn" },
-  { postcode: "3130", price: 10, label: "3130 - Blackburn North" },
-  { postcode: "3133", price: 15, label: "3133 - Vermont South" },
-].sort((a, b) => a.postcode.localeCompare(b.postcode)); // Sort by postcode
+  { suburb: "Blackburn South", postcode: "3130", price: 10 },
+  { suburb: "Box Hill North", postcode: "3129", price: 20 },
+  { suburb: "Forest Hill", postcode: "3131", price: 10 },
+  { suburb: "Balwyn North", postcode: "3104", price: 20 },
+  { suburb: "Balwyn", postcode: "3103", price: 20 },
+  { suburb: "Burwood", postcode: "3125", price: 15 },
+  { suburb: "Box Hill", postcode: "3128", price: 15 },
+  { suburb: "Burwood East", postcode: "3151", price: 15 },
+  { suburb: "Doncaster East", postcode: "3109", price: 20 },
+  { suburb: "Doncaster", postcode: "3108", price: 20 },
+  { suburb: "Mitcham", postcode: "3132", price: 15 },
+  { suburb: "Vermont", postcode: "3133", price: 15 },
+  { suburb: "Camberwell", postcode: "3124", price: 20 },
+  { suburb: "Canterbury", postcode: "3126", price: 20 },
+  { suburb: "Donvale", postcode: "3111", price: 20 },
+  { suburb: "Mount Waverley", postcode: "3149", price: 20 },
+  { suburb: "Surrey Hills", postcode: "3127", price: 20 },
+  { suburb: "Templestowe", postcode: "3107", price: 20 },
+  { suburb: "Templestowe Lower", postcode: "3106", price: 20 },
+  { suburb: "Nunawading", postcode: "3131", price: 15 },
+  { suburb: "Ringwood", postcode: "3134", price: 20 },
+  { suburb: "Heathmont", postcode: "3135", price: 20 },
+  { suburb: "Blackburn", postcode: "3130", price: 10 },
+  { suburb: "Blackburn North", postcode: "3130", price: 10 },
+  { suburb: "Vermont South", postcode: "3133", price: 15 },
+].sort((a, b) => a.postcode.localeCompare(b.postcode) || a.suburb.localeCompare(b.suburb)); // Sort by postcode then suburb
+
+export const normalizeSuburbName = (value: string): string =>
+  value.toLowerCase().replace(/\s+/g, ' ').trim();
 
 // Helper function to get display label without price
-const getDisplayLabel = (zone: DeliveryZone): string => {
-  // Extract suburb name from label (format: "POSTCODE - Suburb Name")
-  const match = zone.label.match(/^\d+\s*-\s*(.+)/);
-  return match ? `${zone.postcode} - ${match[1]}` : zone.label;
-};
+const getDisplayLabel = (zone: DeliveryZone): string => `${zone.postcode} - ${zone.suburb}`;
 
 interface PostcodeComboboxProps {
   value: string;
@@ -61,6 +54,8 @@ interface PostcodeComboboxProps {
   inputName?: string;
   inputAutoComplete?: string;
   inputId?: string;
+  preferredSuburb?: string;
+  onZoneChange?: (zone: DeliveryZone | null) => void;
 }
 
 const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
@@ -75,6 +70,8 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
   inputName = "shipping_estimate",
   inputAutoComplete = "off",
   inputId,
+  preferredSuburb,
+  onZoneChange,
 }) => {
   const [isComboboxOpen, setIsComboboxOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -84,13 +81,24 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
   useEffect(() => {
     if (!value || value === 'other') {
       setSelectedZone(null);
+      onZoneChange?.(null);
       return;
     }
     if (selectedZone?.postcode !== value) {
-      const zone = DELIVERY_ZONES.find((z) => z.postcode === value) || null;
+      const normalizedPreferredSuburb = preferredSuburb
+        ? normalizeSuburbName(preferredSuburb)
+        : '';
+      const zone = normalizedPreferredSuburb
+        ? DELIVERY_ZONES.find(
+            (z) =>
+              z.postcode === value &&
+              normalizeSuburbName(z.suburb) === normalizedPreferredSuburb
+          ) || DELIVERY_ZONES.find((z) => z.postcode === value) || null
+        : DELIVERY_ZONES.find((z) => z.postcode === value) || null;
       setSelectedZone(zone);
+      onZoneChange?.(zone);
     }
-  }, [value, selectedZone?.postcode]);
+  }, [value, selectedZone?.postcode, preferredSuburb, onZoneChange]);
 
   // Click outside handler
   useEffect(() => {
@@ -118,8 +126,8 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
     const searchLower = searchInput.toLowerCase().trim();
     return DELIVERY_ZONES.filter((zone) => {
       const postcodeMatch = zone.postcode.toLowerCase().includes(searchLower);
-      const labelMatch = zone.label.toLowerCase().includes(searchLower);
-      return postcodeMatch || labelMatch;
+      const suburbMatch = zone.suburb.toLowerCase().includes(searchLower);
+      return postcodeMatch || suburbMatch;
     });
   }, [searchInput]);
 
@@ -132,10 +140,12 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
       onChange('other');
       onPriceChange?.(null);
       setSelectedZone(null);
+      onZoneChange?.(null);
     } else {
       onChange(zone.postcode);
       onPriceChange?.(zone.price);
       setSelectedZone(zone);
+      onZoneChange?.(zone);
     }
     setSearchInput('');
     setIsComboboxOpen(false);
@@ -150,6 +160,8 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
     onPriceChange?.(null);
     setSearchInput('');
     setIsComboboxOpen(false);
+    setSelectedZone(null);
+    onZoneChange?.(null);
     if (onErrorChange && error) {
       onErrorChange(null);
     }
@@ -164,7 +176,7 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
       if (selectedZone?.postcode === value) {
         return getDisplayLabel(selectedZone);
       }
-      const zone = DELIVERY_ZONES.find((z) => z.postcode === value);
+      const zone = selectedZone || DELIVERY_ZONES.find((z) => z.postcode === value);
       return zone ? getDisplayLabel(zone) : '';
     }
     return '';
@@ -234,11 +246,12 @@ const PostcodeCombobox: React.FC<PostcodeComboboxProps> = ({
                 {/* Show all zones when no search or when there are matches */}
                 {filteredZones.map((zone) => (
                   <button
-                    key={`${zone.postcode}-${zone.label}`}
+                    key={`${zone.postcode}-${zone.suburb}`}
                     type="button"
                     onClick={() => handleZoneSelect(zone)}
                     className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors font-sans text-sm ${
-                      selectedZone?.postcode === zone.postcode && selectedZone?.label === zone.label
+                      selectedZone?.postcode === zone.postcode &&
+                      selectedZone?.suburb === zone.suburb
                         ? 'bg-stone-50 font-semibold'
                         : ''
                     }`}

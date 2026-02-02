@@ -4,7 +4,7 @@ import { ShoppingBag, Trash2, Pencil, Truck, Store, Phone } from 'lucide-react';
 import Header from '../components/Header';
 import { useCart, CartItem } from '../context/CartContext';
 import EditCartModal from '../components/EditCartModal';
-import PostcodeCombobox from '../components/ui/PostcodeCombobox';
+import PostcodeCombobox, { DeliveryZone } from '../components/ui/PostcodeCombobox';
 
 // Shop information
 const SHOP_INFO = {
@@ -36,6 +36,7 @@ const CartPage: React.FC = () => {
   
   // Shipping estimate state
   const [selectedPostcode, setSelectedPostcode] = useState<string>('');
+  const [selectedDeliveryZone, setSelectedDeliveryZone] = useState<DeliveryZone | null>(null);
   const [shippingCost, setShippingCost] = useState<number | null>(null);
   
 
@@ -323,6 +324,8 @@ const CartPage: React.FC = () => {
                       setSelectedPostcode(postcode);
                     }}
                     onPriceChange={setShippingCost}
+                    onZoneChange={setSelectedDeliveryZone}
+                    preferredSuburb={selectedDeliveryZone?.suburb}
                   />
                   
                   {/* Show contact info when "Other" is selected */}
@@ -383,7 +386,7 @@ const CartPage: React.FC = () => {
                       deliveryMethod: shippingMethod,
                       shippingAddress: {
                         state: selectedState,
-                        suburb: selectedSuburb?.name || '',
+                      suburb: selectedDeliveryZone?.suburb || selectedSuburb?.name || '',
                         postcode: selectedPostcode || selectedSuburb?.postcode || ''
                       }
                     }
