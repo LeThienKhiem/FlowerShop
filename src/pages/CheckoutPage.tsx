@@ -379,7 +379,7 @@ const CheckoutPage: React.FC = () => {
   const [recipientFirstName, setRecipientFirstName] = useState('');
   const [recipientLastName, setRecipientLastName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
-  const [isRecipientSameAsSender, setIsRecipientSameAsSender] = useState(true);
+  const [isRecipientSameAsSender, setIsRecipientSameAsSender] = useState(false);
   const [globalMessage, setGlobalMessage] = useState('');
   const [itemMessages, setItemMessages] = useState<Record<string, string>>({});
   const [address, setAddress] = useState('');
@@ -624,6 +624,14 @@ const CheckoutPage: React.FC = () => {
       phone: recipientPhone || undefined,
       message: hasMessage || undefined,
     };
+  };
+
+  const getSuburbFromPostcode = (postcode?: string): string | undefined => {
+    if (!postcode) return undefined;
+    const zone = DELIVERY_ZONES.find((z) => z.postcode === postcode);
+    if (!zone) return undefined;
+    const match = zone.label.match(/^\d+\s*-\s*(.+)/);
+    return match ? match[1] : zone.label;
   };
 
   const updateItemMessage = (splitKey: string, value: string) => {
@@ -1206,6 +1214,21 @@ const CheckoutPage: React.FC = () => {
       console.log('Order data for email:', orderData);
 
       if (EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY) {
+        const primaryRecipient = isMultiShipping
+          ? multiAddresses[expandedItems[0]?.key]
+          : {
+              firstName: recipientFirstName,
+              lastName: recipientLastName,
+              address: address,
+              state: state,
+              postcode: selectedPostcode,
+              phone: recipientPhone,
+            };
+        const primaryRecipientName = `${primaryRecipient?.firstName ?? ''} ${primaryRecipient?.lastName ?? ''}`.trim();
+        const primaryRecipientSuburb = getSuburbFromPostcode(primaryRecipient?.postcode);
+        const primaryDeliveryDate = isMultiShipping
+          ? multiDeliveryDates[expandedItems[0]?.key]
+          : deliveryDate;
         const emailItems = isMultiToAddress
           ? cartItems.flatMap((item) =>
               Array.from({ length: item.quantity }, (_, index) => {
@@ -1243,6 +1266,13 @@ const CheckoutPage: React.FC = () => {
             customerName={`${firstName} ${lastName}`.trim()}
             customerEmail={email}
             customerPhone={phone}
+            deliveryDate={primaryDeliveryDate}
+            recipientName={primaryRecipientName || undefined}
+            recipientAddress={primaryRecipient?.address}
+            recipientSuburb={primaryRecipientSuburb}
+            recipientState={primaryRecipient?.state}
+            recipientPostcode={primaryRecipient?.postcode}
+            recipientPhone={primaryRecipient?.phone}
           />
         );
 

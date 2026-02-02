@@ -31,18 +31,45 @@ interface NewOrderEmailProps {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  deliveryDate?: string;
+  recipientName?: string;
+  recipientAddress?: string;
+  recipientSuburb?: string;
+  recipientState?: string;
+  recipientPostcode?: string;
+  recipientPhone?: string;
 }
 
 const formatCurrency = (amount: number): string => {
   return `$${amount.toFixed(2)}`;
 };
 
+const formatDeliveryDate = (value?: string): string => {
+  if (!value) return 'N/A';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-AU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
 const EXCLUDED_OPTION_KEYS = new Set(['sku', 'id', 'product_id']);
+const EXTRA_PACKAGE_KEYS = ['Balloon', 'Bear', 'Chocolate', 'Vase', 'Wine'];
 
 const getSelectedOptions = (item: EmailItem): Record<string, any> => {
   const raw = item.selected_options ?? item.selectedOptions;
   if (!raw || typeof raw !== 'object') return {};
   return raw;
+};
+
+const getExtraPackageLabel = (options: Record<string, any>): string => {
+  const extras = EXTRA_PACKAGE_KEYS.map((key) => {
+    if (!(key in options)) return null;
+    return formatOptionValue((options as Record<string, any>)[key]);
+  }).filter(Boolean) as string[];
+  return extras.length > 0 ? extras.join(', ') : 'None';
 };
 
 const formatOptionValue = (value: any): string | null => {
@@ -75,7 +102,17 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
   customerName,
   customerEmail,
   customerPhone,
+  deliveryDate,
+  recipientName,
+  recipientAddress,
+  recipientSuburb,
+  recipientState,
+  recipientPostcode,
+  recipientPhone,
 }) => {
+  const recipientLocality = [recipientSuburb, recipientState].filter(Boolean).join(', ');
+  const recipientCityLine = [recipientLocality, recipientPostcode].filter(Boolean).join(' ');
+
   return (
     <Html>
       <Head />
@@ -94,6 +131,7 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
                 ([key]) => !EXCLUDED_OPTION_KEYS.has(key)
               );
               const rowTotal = item.quantity * item.price;
+              const extraPackageLabel = getExtraPackageLabel(options);
               return (
                 <Section key={`${item.name}-${index}`} style={{ marginBottom: '16px', borderBottom: '1px solid #e5e7eb', paddingBottom: '16px' }}>
                   <Section style={{ display: 'flex', gap: '12px' }}>
@@ -121,6 +159,9 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
                       )}
                       <Text style={{ fontSize: '12px', color: '#6b7280', margin: '6px 0 0' }}>
                         Qty: {item.quantity} x {formatCurrency(item.price)}
+                      </Text>
+                      <Text style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0' }}>
+                        Extra Package: {extraPackageLabel}
                       </Text>
                       <Text style={{ fontSize: '13px', fontWeight: 600, margin: '4px 0 0' }}>
                         {formatCurrency(rowTotal)}
@@ -153,6 +194,9 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
 
           <Section>
             <Text style={{ fontSize: '14px', margin: '0 0 6px' }}>
+              Delivery Date: {formatDeliveryDate(deliveryDate)}
+            </Text>
+            <Text style={{ fontSize: '14px', margin: '0 0 6px' }}>
               Subtotal: {formatCurrency(subtotal)}
             </Text>
             <Text style={{ fontSize: '14px', margin: '0 0 6px' }}>
@@ -167,6 +211,19 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
           </Section>
 
           <Section style={{ marginTop: '16px' }}>
+            <Text style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Shipping Address</Text>
+            <Text style={{ fontSize: '12px', margin: '4px 0 0', lineHeight: '1.5' }}>
+              {recipientName || 'N/A'}
+              <br />
+              {recipientAddress || 'N/A'}
+              <br />
+              {recipientCityLine || 'N/A'}
+              <br />
+              Phone: {recipientPhone || 'N/A'}
+            </Text>
+          </Section>
+
+          <Section style={{ marginTop: '16px' }}>
             <Text style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Billing Customer</Text>
             <Text style={{ fontSize: '12px', margin: '4px 0 0' }}>{customerName || 'N/A'}</Text>
             <Text style={{ fontSize: '12px', margin: '4px 0 0' }}>{customerEmail || 'N/A'}</Text>
@@ -175,7 +232,7 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
 
           <Section style={{ marginTop: '16px' }}>
             <Text style={{ fontSize: '12px', color: '#6b7280', margin: 0, textAlign: 'center' }}>
-              Thank you for your order. We are preparing it now.
+              Thank you for placing an order with us.
             </Text>
             <Text style={{ fontSize: '12px', color: '#8898aa', margin: '6px 0 0', textAlign: 'center' }}>
               Magnolia Flowers | ABN 41 644 261 816

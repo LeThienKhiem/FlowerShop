@@ -24,6 +24,19 @@ const formatCurrency = (amount: number): string => {
   return `$${amount.toFixed(2)}`;
 };
 
+const formatDeliveryDate = (value?: string): string => {
+  if (!value) return 'N/A';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-AU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+const EXTRA_PACKAGE_KEYS = ['Balloon', 'Bear', 'Chocolate', 'Vase', 'Wine'];
+
 const parseSelectedOptions = (item: CartItem): Record<string, any> => {
   const raw = (item as any).selectedOptions ?? (item as any).selected_options;
   if (!raw) return {};
@@ -57,8 +70,21 @@ const renderOptionValue = (value: any): string => {
   return String(value);
 };
 
+const getExtraPackageLabel = (options: Record<string, any>): string => {
+  const extras = EXTRA_PACKAGE_KEYS.map((key) => {
+    if (!(key in options)) return null;
+    const displayValue = renderOptionValue(options[key]);
+    return displayValue || null;
+  }).filter(Boolean) as string[];
+  return extras.length > 0 ? extras.join(', ') : 'None';
+};
+
 const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
   const displayOrderId = getDisplayOrderId(order.id);
+  const rawDeliveryDate = order.deliveryDate ?? order.delivery_date;
+  const recipientName = `${order.recipientDetails?.firstName ?? ''} ${order.recipientDetails?.lastName ?? ''}`.trim();
+  const recipientLocality = [order.recipientDetails?.suburb, order.recipientDetails?.state].filter(Boolean).join(', ');
+  const recipientCityLine = [recipientLocality, order.recipientDetails?.postcode].filter(Boolean).join(' ');
   const headerStyle: React.CSSProperties = {
     backgroundColor: '#D87BB0',
     color: '#ffffff',
@@ -124,6 +150,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
           <tbody>
             {items.map((item, index) => {
               const options = parseSelectedOptions(item);
+              const extraPackageLabel = getExtraPackageLabel(options);
               return (
                 <tr key={`${item.id}-${item.selectedSize}-${index}`}>
                   <td style={tdStyle}>
@@ -137,6 +164,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
                         </div>
                       );
                     })}
+                    <div style={optionTextStyle}>Extra Package: {extraPackageLabel}</div>
                     {item.recipientInfo && (
                       <div
                         style={{
@@ -174,6 +202,10 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
 
         <div style={{ marginTop: '16px' }}>
           <div style={totalRowStyle}>
+            <span>Delivery Date: </span>
+            <span>{formatDeliveryDate(rawDeliveryDate)}</span>
+          </div>
+          <div style={totalRowStyle}>
             <span>Subtotal: </span>
             <span>{formatCurrency(order.subtotal)}</span>
           </div>
@@ -193,6 +225,18 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
 
         <div style={{ marginTop: '24px' }}>
           <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+            Shipping Address
+          </div>
+          <div style={{ fontSize: '13px', color: '#666666', lineHeight: '1.5' }}>
+            <div>{recipientName || 'N/A'}</div>
+            <div>{order.recipientDetails?.address || 'N/A'}</div>
+            <div>{recipientCityLine || 'N/A'}</div>
+            <div>Phone: {order.recipientDetails?.phone || 'N/A'}</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '24px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
             Billing Customer
           </div>
           <div style={{ fontSize: '13px', color: '#666666' }}>
@@ -203,7 +247,7 @@ const OrderReceipt: React.FC<OrderReceiptProps> = ({ order, items }) => {
         </div>
 
         <div style={{ marginTop: '16px', fontSize: '13px', color: '#666666' }}>
-          Thank you for your order. We are preparing it now.
+          Thank you for placing an order with us.
         </div>
         <div
           style={{

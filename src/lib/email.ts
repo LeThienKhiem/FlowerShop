@@ -21,10 +21,13 @@ export interface OrderData {
     lastName?: string;
     phone?: string;
     address?: string;
+    suburb?: string;
     state?: string;
     postcode?: string;
     message?: string;
   };
+  deliveryDate?: string;
+  delivery_date?: string;
   cartItems: CartItem[];
   subtotal: number;
   shipping: number;
