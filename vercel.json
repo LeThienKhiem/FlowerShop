@@ -1,6 +1,58 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/contact-us",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/contact-us/",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/floral/bouquet",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/floral/bouquet/",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/floral/arrangement",
+      "destination": "/category/arrangement",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/floral/arrangement/",
+      "destination": "/category/arrangement",
+      "permanent": true
+    },
+    {
+      "source": "/about-us/delivery-places",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/about-us/delivery-places/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/floral",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/floral/",
+      "destination": "/shop",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
