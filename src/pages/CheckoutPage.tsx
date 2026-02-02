@@ -1263,6 +1263,8 @@ const CheckoutPage: React.FC = () => {
             shipping={shippingCost}
             tax={totalGST}
             total={finalTotal}
+            discountAmount={discountAmount}
+            discountCode={appliedCoupon?.code ?? null}
             customerName={`${firstName} ${lastName}`.trim()}
             customerEmail={email}
             customerPhone={phone}

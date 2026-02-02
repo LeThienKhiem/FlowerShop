@@ -28,6 +28,8 @@ interface NewOrderEmailProps {
   shipping: number;
   tax: number;
   total: number;
+  discountAmount?: number;
+  discountCode?: string | null;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
@@ -99,6 +101,8 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
   shipping,
   tax,
   total,
+  discountAmount,
+  discountCode,
   customerName,
   customerEmail,
   customerPhone,
@@ -112,6 +116,9 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
 }) => {
   const recipientLocality = [recipientSuburb, recipientState].filter(Boolean).join(', ');
   const recipientCityLine = [recipientLocality, recipientPostcode].filter(Boolean).join(' ');
+  const normalizedDiscount = Math.max(0, Number(discountAmount ?? 0));
+  const shouldShowDiscount = normalizedDiscount > 0;
+  const discountLabel = discountCode ? `Coupon: ${discountCode}` : 'Discount';
 
   return (
     <Html>
@@ -199,6 +206,11 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
             <Text style={{ fontSize: '14px', margin: '0 0 6px' }}>
               Subtotal: {formatCurrency(subtotal)}
             </Text>
+            {shouldShowDiscount && (
+              <Text style={{ fontSize: '14px', margin: '0 0 6px' }}>
+                {discountLabel}: -{formatCurrency(normalizedDiscount)}
+              </Text>
+            )}
             <Text style={{ fontSize: '14px', margin: '0 0 6px' }}>
               Shipping: {formatCurrency(shipping)}
             </Text>
