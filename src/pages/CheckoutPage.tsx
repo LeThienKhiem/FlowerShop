@@ -37,6 +37,9 @@ type SecurityLogEntry = {
   details?: Record<string, unknown>;
 };
 
+/** Single source of truth for "extras to display" (Order Summary + any main list). */
+export type ExtraDisplayItem = { label: string; price: number };
+
 interface OrderInfoPreviewProps {
   className?: string;
   cartItems: CartItem[];
@@ -48,6 +51,8 @@ interface OrderInfoPreviewProps {
   seasonalSurcharge: number;
   getDisplayPrice: (item: CartItem) => number;
   getImageUrl: (item: CartItem) => string;
+  /** Same logic as main product list: derive extras from selectedOptions. */
+  getExtrasForDisplay: (item: CartItem) => ExtraDisplayItem[];
 }
 
 interface PaymentActionsProps {
@@ -99,16 +104,34 @@ const OrderInfoPreview: React.FC<OrderInfoPreviewProps> = ({
   seasonalSurcharge,
   getDisplayPrice,
   getImageUrl,
+  getExtrasForDisplay,
 }) => (
   <div className={`bg-stone-50 p-6 rounded-lg border border-stone-200 ${className}`}>
     <h2 className="text-lg font-serif font-bold mb-5 text-stone-900">
       Order Summary
     </h2>
 
-    {/* Product List */}
+    {/* Product List – same extras source as main list; supports item.extras (array) and selectedOptions */}
     <div className="space-y-4 mb-6">
       {cartItems.map((item) => {
         const displayPrice = getDisplayPrice(item);
+        const itemAny = item as unknown as Record<string, unknown>;
+        const extrasFromArray = Array.isArray(itemAny.extras) ? (itemAny.extras as { name?: string; type?: string; price?: number }[]) : [];
+        let extrasFromOptions = getExtrasForDisplay(item);
+        const messageForExtras = item.message ?? itemAny.message;
+        if (extrasFromOptions.length === 0 && typeof messageForExtras === 'string' && /Extras\s*:/i.test(messageForExtras)) {
+          const fromMsg = (messageForExtras.match(/Extras\s*:\s*([^\n]+)/i) || [])[1];
+          if (fromMsg) {
+            extrasFromOptions = fromMsg.split(',').map((s) => s.trim()).filter(Boolean).map((label) => ({ label, price: 0 }));
+          }
+        }
+        const hasExtrasArray = extrasFromArray.length > 0;
+        const hasExtrasFromOptions = extrasFromOptions.length > 0;
+        const extrasTotalPerUnit =
+          (hasExtrasArray ? extrasFromArray.reduce((sum, ex) => sum + (ex.price ?? 0), 0) : 0) ||
+          (hasExtrasFromOptions ? extrasFromOptions.reduce((sum, ex) => sum + ex.price, 0) : 0);
+        const basePricePerUnit = Math.max(0, displayPrice - extrasTotalPerUnit);
+
         return (
           <div key={`${item.id}-${item.selectedSize}`} className="flex gap-3">
             <img
@@ -119,10 +142,33 @@ const OrderInfoPreview: React.FC<OrderInfoPreviewProps> = ({
             <div className="flex-1 min-w-0">
               <p className="font-medium text-stone-900 text-sm font-sans truncate">
                 {item.name}
+                {item.selectedSize ? ` (${item.selectedSize})` : ''}
               </p>
               <p className="text-xs text-gray-500 font-sans">
                 Qty: {item.quantity} × ${displayPrice.toFixed(2)}
               </p>
+              {(hasExtrasArray || hasExtrasFromOptions) && (
+                <div className="mt-1.5 space-y-0.5 text-xs text-stone-600 font-sans">
+                  <div className="text-sm text-gray-600 pl-2 flex justify-between">
+                    <span>Item (base)</span>
+                    <span>${basePricePerUnit.toFixed(2)}</span>
+                  </div>
+                  {hasExtrasArray &&
+                    extrasFromArray.map((extra, i) => (
+                      <div key={`extra-${i}`} className="text-sm text-gray-500 pl-2 flex justify-between">
+                        <span>+ {extra.name ?? extra.type ?? 'Add-on'}</span>
+                        <span>{extra.price != null ? `$${Number(extra.price).toFixed(2)}` : ''}</span>
+                      </div>
+                    ))}
+                  {!hasExtrasArray &&
+                    extrasFromOptions.map((ex) => (
+                      <div key={ex.label} className="text-sm text-gray-500 pl-2 flex justify-between">
+                        <span>+ {ex.label}</span>
+                        <span>${ex.price.toFixed(2)}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -613,8 +659,9 @@ const CheckoutPage: React.FC = () => {
   };
 
   const buildSelectedOptions = (item: CartItem): Record<string, any> | null => {
-    if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
-      return item.selectedOptions;
+    const opts = item.selectedOptions ?? (item as unknown as Record<string, unknown>).selected_options;
+    if (opts && typeof opts === 'object' && Object.keys(opts).length > 0) {
+      return opts as Record<string, any>;
     }
 
     const fallbackOptions: Record<string, any> = {};
@@ -626,6 +673,67 @@ const CheckoutPage: React.FC = () => {
     }
 
     return Object.keys(fallbackOptions).length > 0 ? fallbackOptions : null;
+  };
+
+  /** Derive extra quantities from cart item selectedOptions for order_items columns. */
+  const getExtraQuantitiesForRow = (item: CartItem, rowQuantity: number) => {
+    const opts = buildSelectedOptions(item);
+    const has = (key: string) => {
+      const v = opts?.[key];
+      return v != null && v !== '' && String(v).toLowerCase() !== 'none';
+    };
+    return {
+      balloon_qty: has('Balloon') ? rowQuantity : 0,
+      bear_qty: has('Bear') ? rowQuantity : 0,
+      chocolate_qty: has('Chocolate') ? rowQuantity : 0,
+      vase_qty: has('Vase') ? rowQuantity : 0,
+      wine_qty: has('Wine') ? rowQuantity : 0,
+    };
+  };
+
+  /** Parse "Extras: A, B, C" from item.message (fallback when selectedOptions missing). Case-insensitive. */
+  const parseExtrasFromMessage = (message: string | undefined): ExtraDisplayItem[] => {
+    if (!message || typeof message !== 'string') return [];
+    const match = message.match(/Extras\s*:\s*([^\n]+)/i);
+    if (!match) return [];
+    return match[1]
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((label) => ({ label, price: 0 }));
+  };
+
+  /** Extras for UI display (Order Summary + main list). Uses selectedOptions first, then item.message. */
+  const getExtrasForDisplay = (item: CartItem): ExtraDisplayItem[] => {
+    const opts = buildSelectedOptions(item) ?? {};
+    const extraKeys = ['Balloon', 'Bear', 'Chocolate', 'Vase', 'Wine'] as const;
+    const fromOptions = extraKeys
+      .filter((k) => {
+        const v = opts[k] ?? opts[k.toLowerCase()];
+        if (v == null) return false;
+        if (typeof v === 'object' && v !== null && 'price' in v) return (v as { price?: number }).price !== 0;
+        const s = String(v).trim();
+        return s !== '' && s.toLowerCase() !== 'none';
+      })
+      .map((k) => {
+        const raw = opts[k] ?? opts[k.toLowerCase()];
+        let label: string = k;
+        let price = 0;
+        if (typeof raw === 'object' && raw !== null && 'name' in raw && 'price' in raw) {
+          label = String((raw as { name?: string }).name ?? k);
+          price = Number((raw as { price?: number }).price) || 0;
+        } else {
+          const val = String(raw ?? '');
+          const priceMatch = val.match(/\(\+\$([\d.]+)\)/);
+          price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+          label = priceMatch ? val.replace(/\s*\(\+\$[\d.]+\)\)?$/, '').trim() : val.trim();
+          if (!label) label = k;
+        }
+        return { label, price };
+      });
+    const messageStr = item.message ?? (item as unknown as Record<string, unknown>).message;
+    const fromMessage = parseExtrasFromMessage(typeof messageStr === 'string' ? messageStr : undefined);
+    return fromOptions.length > 0 ? fromOptions : fromMessage;
   };
 
   const buildRecipientInfoFromSplit = (shipment: AddressData | undefined, message?: string) => {
@@ -1169,6 +1277,7 @@ const CheckoutPage: React.FC = () => {
                 image_url: getImageUrl(item),
                 selected_options: buildSelectedOptions(item),
                 recipient_info: recipientInfo,
+                ...getExtraQuantitiesForRow(item, 1),
                 ...deliveryDetails,
               };
             })
@@ -1190,6 +1299,7 @@ const CheckoutPage: React.FC = () => {
               image_url: getImageUrl(item),
               selected_options: buildSelectedOptions(item),
               recipient_info: recipientInfo,
+              ...getExtraQuantitiesForRow(item, item.quantity),
               ...deliveryDetails,
             };
           });
@@ -1272,6 +1382,7 @@ const CheckoutPage: React.FC = () => {
               Array.from({ length: item.quantity }, (_, index) => {
                 const splitKey = getSplitItemKey(item, index);
                 const splitShipment = splitShipments[splitKey];
+                const extras = getExtraQuantitiesForRow(item, 1);
                 return {
                   name: item.name,
                   quantity: 1,
@@ -1282,20 +1393,25 @@ const CheckoutPage: React.FC = () => {
                   recipientInfo: buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]),
                   deliveryDate: deliveryDate,
                   cardMessage: itemMessages[splitKey] ?? '',
+                  ...extras,
                 };
               })
             )
-          : cartItems.map((item) => ({
-              name: item.name,
-              quantity: item.quantity,
-              price: getDisplayPrice(item),
-              imageUrl: getImageUrl(item),
-              selectedOptions: buildSelectedOptions(item),
-              selectedSize: item.selectedSize,
-              recipientInfo: buildRecipientInfoFromMain(),
-              deliveryDate: deliveryDate,
-              cardMessage: globalMessage,
-            }));
+          : cartItems.map((item) => {
+              const extras = getExtraQuantitiesForRow(item, item.quantity);
+              return {
+                name: item.name,
+                quantity: item.quantity,
+                price: getDisplayPrice(item),
+                imageUrl: getImageUrl(item),
+                selectedOptions: buildSelectedOptions(item),
+                selectedSize: item.selectedSize,
+                recipientInfo: buildRecipientInfoFromMain(),
+                deliveryDate: deliveryDate,
+                cardMessage: globalMessage,
+                ...extras,
+              };
+            });
 
         const emailHtml = renderToStaticMarkup(
           <NewOrderEmail
@@ -1395,6 +1511,7 @@ const CheckoutPage: React.FC = () => {
             seasonalSurcharge={seasonalSurcharge}
             getDisplayPrice={getDisplayPrice}
             getImageUrl={getImageUrl}
+            getExtrasForDisplay={getExtrasForDisplay}
           />
           <div className="w-full lg:w-2/3 space-y-5 font-sans">
             <div className="rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -2094,6 +2211,7 @@ const CheckoutPage: React.FC = () => {
                 seasonalSurcharge={seasonalSurcharge}
                 getDisplayPrice={getDisplayPrice}
                 getImageUrl={getImageUrl}
+                getExtrasForDisplay={getExtrasForDisplay}
               />
               <PaymentActions
                 appliedCoupon={appliedCoupon}
