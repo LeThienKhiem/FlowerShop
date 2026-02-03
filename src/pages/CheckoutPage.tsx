@@ -64,7 +64,6 @@ interface PaymentActionsProps {
   isPaymentLoading: boolean;
   paymentError: string | null;
   clientSecret: string | null;
-  shouldRenderForm: boolean;
   fetchClientSecret: () => void;
   handlePaymentSuccess: () => void;
   validateForm: () => Record<string, boolean>;
@@ -184,7 +183,6 @@ const PaymentActions: React.FC<PaymentActionsProps> = ({
   isPaymentLoading,
   paymentError,
   clientSecret,
-  shouldRenderForm,
   fetchClientSecret,
   handlePaymentSuccess,
   validateForm,
@@ -357,8 +355,6 @@ const CheckoutPage: React.FC = () => {
   const clientSecretRef = useRef<string | null>(null);
   const transactionIdRef = useRef<number | null>(null);
 
-  const shouldRenderForm = Boolean(clientSecret && !paymentError);
-  
   // Get passed state from Cart page
   const passedState = location.state as {
     deliveryMethod?: 'delivery' | 'pickup';
@@ -2113,7 +2109,6 @@ const CheckoutPage: React.FC = () => {
                 isPaymentLoading={isPaymentLoading}
                 paymentError={paymentError}
                 clientSecret={clientSecret}
-                shouldRenderForm={shouldRenderForm}
                 fetchClientSecret={fetchClientSecret}
                 handlePaymentSuccess={handlePaymentSuccess}
                 validateForm={validateForm}

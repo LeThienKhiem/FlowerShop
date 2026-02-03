@@ -6,6 +6,7 @@ interface RecipientInfo {
   phone?: string;
   address?: string;
   suburb?: string;
+  state?: string;
   message?: string;
 }
 
@@ -117,8 +118,9 @@ const getExtraQty = (item: EmailItem, key: string): number => {
     Wine: 'wine_qty',
   };
   const prop = byKey[key];
-  if (prop && typeof (item as Record<string, unknown>)[prop] === 'number') {
-    return Math.max(0, (item as Record<string, number>)[prop]);
+  const itemRecord = item as unknown as Record<string, any>;
+  if (prop && typeof itemRecord[prop] === 'number') {
+    return Math.max(0, itemRecord[prop]);
   }
   const options = getOptions(item);
   return parseQtyFromOption(options[key]);
@@ -162,8 +164,9 @@ const getExtraLabel = (item: EmailItem, key: string): string => {
 /** Get unit price for an extra (from item.bear_price etc., or selected_options, or default). */
 const getExtraUnitPrice = (item: EmailItem, key: string): number => {
   const priceProp = (key.charAt(0).toLowerCase() + key.slice(1)) + '_price' as keyof EmailItem;
-  if (typeof (item as Record<string, unknown>)[priceProp as string] === 'number') {
-    return (item as Record<string, number>)[priceProp as string];
+  const itemRecord = item as unknown as Record<string, any>;
+  if (typeof itemRecord[priceProp as string] === 'number') {
+    return itemRecord[priceProp as string];
   }
   const options = getOptions(item);
   const parsed = parsePriceFromOption(options[key]);
@@ -234,7 +237,6 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
   items,
   subtotal,
   shipping,
-  tax,
   total,
   discountAmount,
   discountCode,
