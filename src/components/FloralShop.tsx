@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
 import Header from './Header';
 import ProductSkeleton from './ProductSkeleton';
 import FeaturedCategories from './FeaturedCategories';
 import ProductCard, { Product as CatalogProduct } from './ProductCard';
+import { supabase } from '../lib/supabase';
 
 interface Product {
   id: number;
@@ -16,11 +16,6 @@ interface Product {
   imageUrl: string;
   aspectRatio: string; // Tailwind aspect ratio class
 }
-
-// Supabase configuration
-const SUPABASE_URL = 'https://rfalymblhmqkjgajlktp.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_kjq9y-ClW1XgZR9mo9hiOg_lf8G2jqx';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 interface FeaturedCategory {
   id: string;
@@ -257,73 +252,27 @@ const FloralShop: React.FC = () => {
     async function loadFeaturedCategories() {
       try {
         setIsLoadingCategories(true);
-        console.log('Fetching featured categories from Supabase...');
-        
-        // First, let's check all categories to see their is_featured status
-        const { data: allCats, error: allError } = await supabase
-          .from('categories')
-          .select('id, name, slug, is_featured')
-          .order('name', { ascending: true });
 
-        console.log('All categories (to check is_featured values):', allCats);
-        
-        if (allError) {
-          console.error('Error fetching all categories:', allError);
-        }
-
-        // Now fetch featured categories
         const { data, error } = await supabase
           .from('categories')
           .select('*')
           .eq('is_featured', true)
           .order('display_order', { ascending: true });
 
-        console.log('Featured categories query result:', { 
-          data, 
-          error, 
-          dataLength: data?.length,
-          dataType: typeof data,
-          isArray: Array.isArray(data)
-        });
-
-        // Also log the first item structure if data exists
-        if (data && data.length > 0) {
-          console.log('First featured category structure:', data[0]);
-          console.log('First category is_featured value:', data[0].is_featured);
-          console.log('First category is_featured type:', typeof data[0].is_featured);
-        }
-
         if (error) {
           console.error('Error fetching featured categories:', error);
-          console.error('Error details:', JSON.stringify(error, null, 2));
-          
-          // If error suggests column doesn't exist, provide helpful message
-          if (error.message && error.message.includes('column') && error.message.includes('is_featured')) {
-            console.error('⚠️ The is_featured column does not exist. Please run supabase-featured-categories.sql in your Supabase SQL Editor.');
-            alert('⚠️ The is_featured column does not exist. Please run supabase-featured-categories.sql in your Supabase SQL Editor.');
-          }
-          
           setFeaturedCategories([]);
           setActiveTab(null);
         } else if (data && data.length > 0) {
-          console.log(`Found ${data.length} featured categories:`, data);
           const categories = data as FeaturedCategory[];
           setFeaturedCategories(categories);
-          // Set first category as active tab
           setActiveTab(categories[0].id);
         } else {
-          console.log('No featured categories found.');
-          console.log('This could mean:');
-          console.log('1. No categories have is_featured = true');
-          console.log('2. The is_featured column might not exist yet');
-          console.log('3. RLS policies might be blocking the query');
-          console.log('All categories check:', allCats?.map(c => ({ name: c.name, is_featured: c.is_featured })));
           setFeaturedCategories([]);
           setActiveTab(null);
         }
       } catch (error) {
         console.error('Error loading featured categories:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
         setFeaturedCategories([]);
         setActiveTab(null);
       } finally {
@@ -363,25 +312,17 @@ const FloralShop: React.FC = () => {
       const isRandomFresh = cachedRandomEntry && (Date.now() - cachedRandomEntry.timestamp < CACHE_DURATION);
       
       if (isProductsFresh && isRandomFresh) {
-        console.log('Using cached products for category:', activeTab);
         setFeaturedProducts(cachedProductsEntry.data || []);
         setRandomProducts(cachedRandomEntry.data || []);
         setIsLoadingProducts(false);
         setIsLoadingMoreProducts(false);
         return;
-      } else if (isProductsFresh || isRandomFresh) {
-        // If one cache is fresh but the other expired, still use the fresh one
-        // but we'll refetch both to keep them in sync
-        console.log('Cache partially expired, refetching for category:', activeTab);
-      } else if (cachedProductsEntry || cachedRandomEntry) {
-        console.log('Cache expired, refetching for category:', activeTab);
       }
 
       // If not cached, fetch from Supabase
       try {
         setIsLoadingProducts(true);
-        console.log('Fetching products for category:', activeTab);
-        
+
         // Correct Supabase syntax for Many-to-Many filter
         // Query from products and join with product_categories using !inner
         // The !inner ensures we only get products that have a matching product_categories entry
@@ -395,11 +336,8 @@ const FloralShop: React.FC = () => {
 
         if (productsError) {
           console.error('Error fetching products:', productsError);
-          console.error('Error details:', JSON.stringify(productsError, null, 2));
           throw productsError;
         }
-
-        console.log('Fetched products data:', productsData);
 
         if (productsData && productsData.length > 0) {
           // Transform Supabase data to Product format
@@ -419,7 +357,6 @@ const FloralShop: React.FC = () => {
             };
           });
 
-          console.log('Transformed products:', transformedProducts);
           setFeaturedProducts(transformedProducts);
           
           // Save to cache with timestamp
@@ -493,7 +430,6 @@ const FloralShop: React.FC = () => {
           }
           setIsLoadingMoreProducts(false);
         } else {
-          console.log('No products found for category:', activeTab);
           setFeaturedProducts([]);
           setRandomProducts([]);
           // Cache empty results with timestamp to prevent refetching (until expiry)

@@ -22,7 +22,12 @@ const AdminLayout: React.FC = () => {
   }, []);
 
   const handleLogin = () => {
-    if (password === 'Nicky.12345') {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+    if (!adminPassword) {
+      alert('Admin password not configured');
+      return;
+    }
+    if (password === adminPassword) {
       sessionStorage.setItem('adminAuth', 'true');
       setIsAuthenticated(true);
       return;

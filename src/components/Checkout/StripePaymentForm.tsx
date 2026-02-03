@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -12,7 +12,6 @@ interface StripePaymentFormProps {
 
 type StripePaymentInnerProps = Omit<StripePaymentFormProps, 'clientSecret'>;
 
-console.log('Stripe Key loaded:', import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
@@ -26,37 +25,41 @@ const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log("🟢 [StripeForm] MOUNTED. ID:", Math.random().toString(36).substr(2, 5));
-    return () => console.log("🔴 [StripeForm] UNMOUNTED (Possible Crash Cause)");
-  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    console.log('[Pay] Submit clicked', { isSubmitting, isProcessingExternal, hasStripe: !!stripe, hasElements: !!elements });
+
     if (isSubmitting || isProcessingExternal) {
+      console.warn('[Pay] Blocked: already submitting or parent is processing');
+      setMessage(isSubmitting ? 'Payment in progress...' : 'Please wait, payment is initialising...');
       return;
     }
     setMessage(null);
 
-    // Run validation if provided
-    if (onValidate && !onValidate()) {
-      return; // Validation failed, errors will be shown in parent component
+    if (onValidate) {
+      const valid = onValidate();
+      if (!valid) {
+        console.warn('[Pay] Blocked: validation failed (check required fields above)');
+        setMessage('Please fix the errors above (e.g. email, phone, delivery date) and try again.');
+        return;
+      }
     }
 
     if (!stripe || !elements) {
+      console.warn('[Pay] Blocked: Stripe not ready', { stripe: !!stripe, elements: !!elements });
       setMessage('Stripe is still loading. Please try again in a moment.');
       return;
     }
 
-    console.log("👉 [Submit] Button Clicked");
-    console.log("👉 [Submit] Stripe Obj:", !!stripe);
-    console.log("👉 [Submit] Elements Obj:", !!elements);
-
     const paymentEl = elements?.getElement('payment');
-    console.log("👉 [Submit] Found Mounted Element?:", !!paymentEl);
+    if (!paymentEl) {
+      console.error('[Pay] Blocked: Payment Element not mounted');
+      setMessage('Payment form not ready. Please wait a moment and try again.');
+      return;
+    }
 
-    if (!paymentEl) console.error("❌ [CRITICAL] Payment Element is MISSING before confirm!");
-
+    console.log('[Pay] Confirming payment...');
     setIsSubmitting(true);
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -82,6 +85,7 @@ const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
   };
 
   const isBusy = isSubmitting || isProcessingExternal;
+  const isButtonDisabled = isSubmitting || !stripe;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -104,9 +108,9 @@ const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
       )}
       <button
         type="submit"
-        disabled={isBusy}
+        disabled={isButtonDisabled}
         className={`w-full py-3 rounded-lg font-bold text-base tracking-wide transition font-sans ${
-          isBusy
+          isButtonDisabled
             ? 'bg-gray-400 text-white cursor-not-allowed'
             : 'bg-stone-900 text-white hover:bg-stone-800'
         }`}
@@ -161,16 +165,8 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   );
 
   if (!clientSecret || clientSecret.length === 0) {
-    console.warn('[StripeElements] Skipping render: missing clientSecret');
     return null;
   }
-
-  console.log('[StripeElements] Rendering', {
-    clientSecretPrefix: `${clientSecret.slice(0, 6)}...`,
-    clientSecretLength: clientSecret.length,
-    clientSecretHasSecret: clientSecret.includes('_secret_'),
-    publishableKeyPrefix: (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '').slice(0, 7),
-  });
 
   return (
     <Elements

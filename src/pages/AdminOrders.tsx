@@ -99,47 +99,22 @@ const AdminOrders: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('=== FETCHING ORDERS ===');
-      console.log('Supabase client:', supabase);
-      
-      // First, try to get all columns to see what's available
       const { data, error: fetchError } = await supabase
         .from('orders')
         .select('*, order_items(*, product:products(*))')
         .order('created_at', { ascending: false });
 
-      // Detailed console logs
-      console.log('Admin Fetch Result:', { data, error: fetchError });
-      console.log('Data type:', typeof data);
-      console.log('Is array?', Array.isArray(data));
-      console.log('Data length:', data?.length);
-      
-      if (data && data.length > 0) {
-        console.log('First order sample:', data[0]);
-        console.log('First order keys:', Object.keys(data[0]));
-        console.log('First order full object:', JSON.stringify(data[0], null, 2));
-      }
-
       if (fetchError) {
-        console.error('Fetch Error Details:', {
-          message: fetchError.message,
-          details: fetchError.details,
-          hint: fetchError.hint,
-          code: fetchError.code,
-        });
         throw fetchError;
       }
 
-      console.log('Setting orders:', data || []);
       setOrders(data || []);
     } catch (err) {
       console.error('Error fetching orders:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load orders';
-      console.error('Error message:', errorMessage);
       setError(errorMessage);
     } finally {
       setIsLoading(false);
-      console.log('=== FETCH COMPLETE ===');
     }
   };
 
@@ -448,16 +423,7 @@ const AdminOrders: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {orders.map((order) => {
-                      // Log each order being rendered to check column names
-                      if (orders.indexOf(order) === 0) {
-                        console.log('Rendering first order:', order);
-                        console.log('Order columns:', Object.keys(order));
-                        console.log('total_amount value:', order.total_amount);
-                        console.log('total_amount type:', typeof order.total_amount);
-                      }
-                      
-                      return (
+                    {orders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-sans">
                           #{getDisplayOrderId(order.id)}
@@ -502,8 +468,7 @@ const AdminOrders: React.FC = () => {
                           </div>
                         </td>
                       </tr>
-                      );
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>

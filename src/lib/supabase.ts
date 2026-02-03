@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration (use env so anon JWT stays in sync)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rfalymblhmqkjgajlktp.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Supabase configuration from environment variables (required)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('Missing Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

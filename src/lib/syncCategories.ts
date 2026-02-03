@@ -3,16 +3,21 @@ import path from 'path';
 import Papa from 'papaparse';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration
-const SUPABASE_URL = 'https://rfalymblhmqkjgajlktp.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_kjq9y-ClW1XgZR9mo9hiOg_lf8G2jqx';
-
-// Use service role key if available (bypasses RLS)
+// Supabase configuration from environment variables (required)
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL) {
+  throw new Error('Missing SUPABASE_URL environment variable');
+}
+if (!SUPABASE_ANON_KEY && !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY environment variable');
+}
 
 const supabase = createClient(
   SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY!,
   {
     auth: {
       autoRefreshToken: false,

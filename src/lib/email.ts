@@ -153,18 +153,13 @@ export const sendOrderEmails = async (orderData: OrderData): Promise<void> => {
       from_name: 'Magnolia Flower Team',
     };
 
-    // Debug: Log email payload items to inspect image URLs
-    console.log('Email Payload Items:', templateParams.orders);
-
     // Send email via EmailJS
-    const response = await emailjs.send(
+    await emailjs.send(
       EMAILJS_SERVICE_ID,
       EMAILJS_TEMPLATE_ID,
       templateParams,
       EMAILJS_PUBLIC_KEY
     );
-
-    console.log('Order confirmation email sent successfully:', response);
   } catch (error) {
     console.error('Error sending order confirmation email:', error);
   }
