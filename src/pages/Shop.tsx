@@ -156,7 +156,8 @@ const Shop: React.FC = () => {
               )
             )
           `)
-          .eq('in_stock', true);
+          .eq('in_stock', true)
+          .order('sort_order', { ascending: true });
 
         if (sortOrder === 'asc') {
           query = query.order('price', { ascending: true });

@@ -16,6 +16,7 @@ interface Product {
   images?: string[] | null;
   in_stock?: boolean;
   has_extras?: boolean;
+  sort_order?: number;
   categories?: Category[];
 }
 
@@ -92,6 +93,7 @@ const AdminProducts: React.FC = () => {
     image_url: '',
     in_stock: true,
     hasExtras: true,
+    sort_order: '100',
   });
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
@@ -126,7 +128,8 @@ const AdminProducts: React.FC = () => {
       // Fetch products
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, name, price, sale_price, description, images, in_stock, has_extras')
+        .select('id, name, price, sale_price, description, images, in_stock, has_extras, sort_order')
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (productsError) {
@@ -241,6 +244,7 @@ const AdminProducts: React.FC = () => {
       image_url: '',
       in_stock: true,
       hasExtras: true,
+      sort_order: '100',
     });
     setSelectedCategoryIds([]);
     setIsModalOpen(true);
@@ -256,6 +260,7 @@ const AdminProducts: React.FC = () => {
       image_url: product.images && product.images.length > 0 ? product.images[0] : '',
       in_stock: product.in_stock ?? true,
       hasExtras: product.has_extras ?? true,
+      sort_order: product.sort_order != null ? String(product.sort_order) : '100',
     });
     setSelectedCategoryIds(product.categories?.map(c => c.id) || []);
     setIsModalOpen(true);
@@ -272,6 +277,7 @@ const AdminProducts: React.FC = () => {
       image_url: '',
       in_stock: true,
       hasExtras: true,
+      sort_order: '100',
     });
     setSelectedCategoryIds([]);
   }
@@ -303,6 +309,9 @@ const AdminProducts: React.FC = () => {
 
       if (editingProduct) {
         // Update existing product
+        const sortOrder = parseInt(formData.sort_order, 10);
+        const sortOrderNum = Number.isFinite(sortOrder) ? sortOrder : 100;
+
         const { error: updateError } = await supabase
           .from('products')
           .update({
@@ -313,6 +322,7 @@ const AdminProducts: React.FC = () => {
             images: images.length > 0 ? images : null,
             in_stock: formData.in_stock,
             has_extras: formData.hasExtras,
+            sort_order: sortOrderNum,
           })
           .eq('id', editingProduct.id);
 
@@ -355,6 +365,9 @@ const AdminProducts: React.FC = () => {
         }
       } else {
         // Create new product
+        const sortOrder = parseInt(formData.sort_order, 10);
+        const sortOrderNum = Number.isFinite(sortOrder) ? sortOrder : 100;
+
         const { data: newProduct, error: insertError } = await supabase
           .from('products')
           .insert({
@@ -365,6 +378,7 @@ const AdminProducts: React.FC = () => {
             images: images.length > 0 ? images : null,
             in_stock: formData.in_stock,
             has_extras: formData.hasExtras,
+            sort_order: sortOrderNum,
           })
           .select()
           .single();
@@ -729,6 +743,21 @@ const AdminProducts: React.FC = () => {
                     />
                     <span className="text-sm text-gray-700 font-sans">Enable Add-on Options (Bear, Wine, etc.)</span>
                   </label>
+                </div>
+
+                {/* Display Order (Sort Order) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={formData.sort_order}
+                    onChange={(e) => setFormData({ ...formData, sort_order: e.target.value })}
+                    className="w-full max-w-[120px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 font-sans"
+                  />
+                  <p className="text-xs text-gray-500 mt-1 font-sans">Enter 1 to show at the top. Default is 100.</p>
                 </div>
 
                 {/* Categories */}

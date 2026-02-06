@@ -28,6 +28,7 @@ const FlowerShopPage: React.FC = () => {
             )
           `)
           .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false });
 
         // If inner join returns no results (some products have no categories),
@@ -46,8 +47,9 @@ const FlowerShopPage: React.FC = () => {
                 )
               )
             `)
-            .eq('in_stock', true)
-            .order('created_at', { ascending: false });
+          .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false });
 
           if (productsErrorLeft) {
             throw productsErrorLeft;
@@ -86,6 +88,7 @@ const FlowerShopPage: React.FC = () => {
           .from('products')
           .select('*')
           .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false });
 
         if (!fallbackError && fallbackData) {

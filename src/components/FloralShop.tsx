@@ -331,6 +331,7 @@ const FloralShop: React.FC = () => {
           .select('id, name, price, sale_price, images, in_stock, created_at, product_categories!inner(category_id)')
           .eq('product_categories.category_id', activeTab)
           .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false })
           .limit(12);
 
@@ -377,6 +378,8 @@ const FloralShop: React.FC = () => {
             .from('products')
             .select('id, name, price, sale_price, images, in_stock')
             .eq('in_stock', true)
+            .order('sort_order', { ascending: true })
+            .order('created_at', { ascending: false })
             .limit(50);
           
           let moreProductsData = allProductsData;

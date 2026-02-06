@@ -107,6 +107,8 @@ const Home: React.FC = () => {
           .select('*')
           .in('id', productIds)
           .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: false })
           .limit(8);
 
         if (productsError) {
@@ -139,6 +141,7 @@ const Home: React.FC = () => {
           .from('products')
           .select('*')
           .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
           .order('price', { ascending: true })
           .limit(50); // Fetch more to filter by effective price
 

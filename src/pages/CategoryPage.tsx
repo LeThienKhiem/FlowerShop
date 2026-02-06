@@ -103,6 +103,7 @@ const CategoryPage: React.FC = () => {
           .select(productSelect)
           .in('id', productIds)
           .eq('in_stock', true)
+          .order('sort_order', { ascending: true })
           .order('created_at', { ascending: false });
 
         if (productsError) {
