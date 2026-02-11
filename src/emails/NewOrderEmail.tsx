@@ -39,7 +39,7 @@ interface EmailItem {
   wine_price?: number;
 }
 
-interface NewOrderEmailProps {
+export interface NewOrderEmailProps {
   orderId: string | number;
   items: EmailItem[];
   subtotal: number;
@@ -427,3 +427,70 @@ const NewOrderEmail: React.FC<NewOrderEmailProps> = ({
 };
 
 export default NewOrderEmail;
+
+// ——— Preview mocks for testing size variants ———
+
+/** Scenario A: Product WITH a size (e.g. Premium). Use to verify "Product Name - Premium" and extras render. */
+export const mockPreviewWithSize: NewOrderEmailProps = {
+  orderId: '14015',
+  items: [
+    {
+      name: 'Red Rose Box',
+      quantity: 1,
+      price: 261.93,
+      selectedSize: 'Premium',
+      imageUrl: 'https://via.placeholder.com/150',
+      bear_qty: 1,
+      bear_price: 24.99,
+      selected_options: {
+        Size: 'Premium (+$40.50)',
+        Bear: 'Small Bear',
+      },
+    },
+  ],
+  subtotal: 261.93,
+  shipping: 20,
+  tax: 25.63,
+  total: 307.56,
+  customerName: 'Jane Customer',
+  customerEmail: 'jane@example.com',
+  customerPhone: '+61 400 000 000',
+  deliveryDate: '2025-02-14',
+  recipientName: 'John Recipient',
+  recipientAddress: '123 Main St',
+  recipientSuburb: 'Blackburn South',
+  recipientState: 'VIC',
+  recipientPostcode: '3130',
+  recipientPhone: '+61 411 111 111',
+  giftMessage: 'Happy Valentine\'s Day!',
+};
+
+/** Scenario B: Product with NO size (standard only). Use to verify "Product Name" with no size suffix. */
+export const mockPreviewNoSize: NewOrderEmailProps = {
+  orderId: '14016',
+  items: [
+    {
+      name: 'Simple Sunflower',
+      quantity: 1,
+      price: 85.0,
+      selectedSize: undefined,
+      imageUrl: 'https://via.placeholder.com/150',
+      selected_options: {},
+    },
+  ],
+  subtotal: 85,
+  shipping: 10,
+  tax: 8.64,
+  total: 103.64,
+  customerName: 'Alex Buyer',
+  customerEmail: 'alex@example.com',
+  customerPhone: '+61 422 222 222',
+  deliveryDate: '2025-02-15',
+  recipientName: 'Sam Receiver',
+  recipientAddress: '45 Park Ave',
+  recipientSuburb: 'Box Hill',
+  recipientState: 'VIC',
+  recipientPostcode: '3128',
+  recipientPhone: '+61 433 333 333',
+  giftMessage: null,
+};

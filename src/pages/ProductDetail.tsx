@@ -22,6 +22,9 @@ interface Product {
   in_stock?: boolean;
   sku?: string | null;
   has_extras?: boolean;
+  has_sizes?: boolean;
+  price_premium?: number | null;
+  price_platinum?: number | null;
   categories?: Category[];
   category?: Category | null;
 }
@@ -397,15 +400,28 @@ const ProductDetail: React.FC = () => {
     ? product.price 
     : null;
   
-  const sizeOptions = SIZE_OPTIONS.map((option) => {
-    if (option.name === 'Premium') {
-      return { ...option, extraPrice: basePrice * 0.3 };
-    }
-    if (option.name === 'Platinum') {
-      return { ...option, extraPrice: basePrice * 0.7 };
-    }
-    return option;
-  });
+  const hasSizes = product.has_sizes !== false;
+
+  const sizeOptions = hasSizes
+    ? SIZE_OPTIONS.map((option) => {
+        if (option.name === 'Regular') {
+          return { ...option, extraPrice: 0 };
+        }
+        if (option.name === 'Premium') {
+          const premiumPrice = product.price_premium != null && product.price_premium > 0
+            ? product.price_premium
+            : basePrice * 1.3;
+          return { ...option, extraPrice: Math.max(0, premiumPrice - basePrice) };
+        }
+        if (option.name === 'Platinum') {
+          const platinumPrice = product.price_platinum != null && product.price_platinum > 0
+            ? product.price_platinum
+            : basePrice * 1.6;
+          return { ...option, extraPrice: Math.max(0, platinumPrice - basePrice) };
+        }
+        return option;
+      })
+    : [{ name: 'Regular' as const, label: 'Standard', extraPrice: 0 }];
 
   // Get selected size option
   const selectedSizeOption = sizeOptions.find(option => option.name === selectedSize) || sizeOptions[0];
@@ -417,8 +433,8 @@ const ProductDetail: React.FC = () => {
     return total + (selectedOption.price || 0);
   }, 0);
   
-  // Calculate final price: base + size premium + extras
-  const finalPrice = basePrice + selectedSizeOption.extraPrice + extrasTotal;
+  // Calculate final price: base + size premium (when has_sizes) + extras
+  const finalPrice = basePrice + (hasSizes ? selectedSizeOption.extraPrice : 0) + extrasTotal;
   
   const images = product.images && product.images.length > 0 
     ? product.images 
@@ -630,17 +646,18 @@ const ProductDetail: React.FC = () => {
 
               {/* Form Options */}
               <div className="space-y-6">
-                {/* 1. SIZE Selector */}
-                {!isPerfectSpot && (
+                {/* SIZE Selector (only when product has_sizes) */}
+                {!isPerfectSpot && hasSizes && (
                   <div>
                     <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide font-sans">
-                      1. SIZE
+                      SIZE
                     </label>
                     <div className="grid grid-cols-3 gap-2 md:flex md:gap-4 mt-2">
                       {sizeOptions.map((option) => (
                         <button
                           key={option.name}
-                          onClick={() => setSelectedSize(option.name)}
+                          type="button"
+                          onClick={() => setSelectedSize(option.name as SizeName)}
                           className={`px-1 py-3 md:px-6 md:py-3 border-2 rounded transition-all duration-300 font-medium font-sans flex flex-col items-center justify-center ${
                             selectedSize === option.name
                               ? 'bg-stone-900 text-white border-stone-900'
@@ -661,11 +678,11 @@ const ProductDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* 2. QUANTITY Selector */}
+                {/* QUANTITY Selector */}
                 {!isPerfectSpot && (
                   <div>
                     <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide font-sans">
-                      2. QUANTITY
+                      QUANTITY
                     </label>
                     <div className="flex items-center border-2 border-stone-200 rounded w-fit mt-2 group focus-within:border-stone-900 transition-colors">
                       <button
@@ -691,7 +708,7 @@ const ProductDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* 3. CHOOSE EXTRAS (Conditional) */}
+                {/* CHOOSE EXTRAS (Conditional) */}
                 {!isPerfectSpot && product.has_extras && (
                   <div>
                     <h3 className="text-center text-lg font-serif font-semibold text-stone-900 uppercase tracking-wide mb-6 mt-8">
@@ -750,7 +767,7 @@ const ProductDetail: React.FC = () => {
                 {!isPerfectSpot && (
                   <div>
                     <label className="block text-sm font-semibold text-stone-900 uppercase tracking-wide mb-3 font-sans">
-                      {product.has_extras ? '4. CARD MESSAGE...' : '3. CARD MESSAGE...'}
+                      CARD MESSAGE
                     </label>
                     
                     {/* Multi-Message Checkbox (only show if quantity >= 2) */}

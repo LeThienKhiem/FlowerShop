@@ -17,6 +17,9 @@ interface Product {
   in_stock?: boolean;
   has_extras?: boolean;
   sort_order?: number;
+  has_sizes?: boolean;
+  price_premium?: number | null;
+  price_platinum?: number | null;
   categories?: Category[];
 }
 
@@ -93,6 +96,9 @@ const AdminProducts: React.FC = () => {
     image_url: '',
     in_stock: true,
     hasExtras: true,
+    hasSizes: true,
+    price_premium: '',
+    price_platinum: '',
     sort_order: '100',
   });
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -128,7 +134,7 @@ const AdminProducts: React.FC = () => {
       // Fetch products
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, name, price, sale_price, description, images, in_stock, has_extras, sort_order')
+        .select('id, name, price, sale_price, description, images, in_stock, has_extras, has_sizes, price_premium, price_platinum, sort_order')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });
 
@@ -244,6 +250,9 @@ const AdminProducts: React.FC = () => {
       image_url: '',
       in_stock: true,
       hasExtras: true,
+      hasSizes: true,
+      price_premium: '',
+      price_platinum: '',
       sort_order: '100',
     });
     setSelectedCategoryIds([]);
@@ -260,6 +269,9 @@ const AdminProducts: React.FC = () => {
       image_url: product.images && product.images.length > 0 ? product.images[0] : '',
       in_stock: product.in_stock ?? true,
       hasExtras: product.has_extras ?? true,
+      hasSizes: product.has_sizes !== false,
+      price_premium: product.price_premium != null ? String(product.price_premium) : '',
+      price_platinum: product.price_platinum != null ? String(product.price_platinum) : '',
       sort_order: product.sort_order != null ? String(product.sort_order) : '100',
     });
     setSelectedCategoryIds(product.categories?.map(c => c.id) || []);
@@ -277,6 +289,9 @@ const AdminProducts: React.FC = () => {
       image_url: '',
       in_stock: true,
       hasExtras: true,
+      hasSizes: true,
+      price_premium: '',
+      price_platinum: '',
       sort_order: '100',
     });
     setSelectedCategoryIds([]);
@@ -305,6 +320,8 @@ const AdminProducts: React.FC = () => {
 
       const price = parseFloat(formData.price);
       const salePrice = formData.sale_price ? parseFloat(formData.sale_price) : null;
+      const pricePremium = formData.price_premium.trim() ? parseFloat(formData.price_premium) : null;
+      const pricePlatinum = formData.price_platinum.trim() ? parseFloat(formData.price_platinum) : null;
       const images = formData.image_url ? [formData.image_url] : [];
 
       if (editingProduct) {
@@ -322,6 +339,9 @@ const AdminProducts: React.FC = () => {
             images: images.length > 0 ? images : null,
             in_stock: formData.in_stock,
             has_extras: formData.hasExtras,
+            has_sizes: formData.hasSizes,
+            price_premium: pricePremium,
+            price_platinum: pricePlatinum,
             sort_order: sortOrderNum,
           })
           .eq('id', editingProduct.id);
@@ -378,6 +398,9 @@ const AdminProducts: React.FC = () => {
             images: images.length > 0 ? images : null,
             in_stock: formData.in_stock,
             has_extras: formData.hasExtras,
+            has_sizes: formData.hasSizes,
+            price_premium: pricePremium,
+            price_platinum: pricePlatinum,
             sort_order: sortOrderNum,
           })
           .select()
@@ -744,6 +767,51 @@ const AdminProducts: React.FC = () => {
                     <span className="text-sm text-gray-700 font-sans">Enable Add-on Options (Bear, Wine, etc.)</span>
                   </label>
                 </div>
+
+                {/* Enable Sizes (Regular, Premium, Platinum) */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasSizes}
+                      onChange={(e) => setFormData({ ...formData, hasSizes: e.target.checked })}
+                      className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                    />
+                    <span className="text-sm text-gray-700 font-sans">Enable Sizes (Regular, Premium, Platinum)</span>
+                  </label>
+                </div>
+                {formData.hasSizes && (
+                  <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-gray-200">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+                        Premium Price (Optional)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.price_premium}
+                        onChange={(e) => setFormData({ ...formData, price_premium: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none font-sans"
+                        placeholder="Leave empty for +30%"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+                        Platinum Price (Optional)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.price_platinum}
+                        onChange={(e) => setFormData({ ...formData, price_platinum: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none font-sans"
+                        placeholder="Leave empty for +60%"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Display Order (Sort Order) */}
                 <div>
