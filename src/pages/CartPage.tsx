@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Pencil, Truck, Store, Phone } from 'lucide-react';
 import Header from '../components/Header';
 import { useCart, CartItem } from '../context/CartContext';
 import EditCartModal from '../components/EditCartModal';
 import PostcodeCombobox, { DeliveryZone } from '../components/ui/PostcodeCombobox';
+import { useShopDates } from '../hooks/useShopDates';
 
 // Shop information
 const SHOP_INFO = {
@@ -24,10 +25,28 @@ interface SuburbEntry {
 }
 
 
+function getTodayYYYYMMDD(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateFriendly(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-AU', { month: 'long', day: 'numeric' });
+}
+
 const CartPage: React.FC = () => {
   const { cartItems, removeFromCart, updateQuantity, updateCartItem } = useCart();
+  const { dateConfig } = useShopDates();
   const navigate = useNavigate();
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
+
+  const todayStr = useMemo(() => getTodayYYYYMMDD(), []);
+  const isShopClosedToday = dateConfig.closed.includes(todayStr);
+  const todayFormatted = useMemo(() => formatDateFriendly(todayStr), [todayStr]);
   
   // Shipping state
   const [shippingMethod, setShippingMethod] = useState<'delivery' | 'pickup'>('delivery');
@@ -370,39 +389,54 @@ const CartPage: React.FC = () => {
               <p className="text-xs text-gray-500 font-sans text-right mb-6">
                 (Includes GST: ${totalGST.toFixed(2)})
               </p>
-              {/* Checkout Button */}
-              <button
-                onClick={() => {
-                  // Validate delivery method requirements
-                  if (shippingMethod === 'delivery') {
-                    if (!selectedPostcode || selectedPostcode === 'other') {
-                      alert('Please select a valid delivery postcode. For areas not listed, please contact us.');
-                      return;
-                    }
-                  }
-                  
-                  navigate('/checkout', {
-                    state: {
-                      deliveryMethod: shippingMethod,
-                      shippingAddress: {
-                        state: selectedState,
-                      suburb: selectedDeliveryZone?.suburb || selectedSuburb?.name || '',
-                        postcode: selectedPostcode || selectedSuburb?.postcode || ''
+
+              {/* Closed today: show message and hide checkout */}
+              {isShopClosedToday ? (
+                <div className="mt-6 p-5 rounded-lg border-2 border-amber-200 bg-amber-50 text-center">
+                  <p className="text-amber-900 font-sans text-sm leading-relaxed">
+                    Due to high demand on Valentine&apos;s Day, online orders are temporarily closed on {todayFormatted}. Call us at (03) 9877 3164 to check availability. Shop walk-in is welcome.
+                  </p>
+                  <a
+                    href="tel:0398773164"
+                    className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors font-sans text-sm"
+                  >
+                    <Phone size={18} />
+                    Call (03) 9877 3164
+                  </a>
+                </div>
+              ) : (
+                /* Checkout Button */
+                <button
+                  onClick={() => {
+                    if (shippingMethod === 'delivery') {
+                      if (!selectedPostcode || selectedPostcode === 'other') {
+                        alert('Please select a valid delivery postcode. For areas not listed, please contact us.');
+                        return;
                       }
                     }
-                  });
-                }}
-                disabled={shippingMethod === 'delivery' && (!selectedPostcode || selectedPostcode === 'other')}
-                className={`w-full py-4 rounded font-bold uppercase tracking-widest transition-all mt-6 text-center font-sans ${
-                  shippingMethod === 'delivery' && (!selectedPostcode || selectedPostcode === 'other')
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-stone-900 text-white hover:bg-stone-800'
-                }`}
-              >
-                {shippingMethod === 'delivery' && (!selectedPostcode || selectedPostcode === 'other')
-                  ? 'Please Select Postcode'
-                  : 'Proceed to Checkout'}
-              </button>
+                    navigate('/checkout', {
+                      state: {
+                        deliveryMethod: shippingMethod,
+                        shippingAddress: {
+                          state: selectedState,
+                          suburb: selectedDeliveryZone?.suburb || selectedSuburb?.name || '',
+                          postcode: selectedPostcode || selectedSuburb?.postcode || ''
+                        }
+                      }
+                    });
+                  }}
+                  disabled={shippingMethod === 'delivery' && (!selectedPostcode || selectedPostcode === 'other')}
+                  className={`w-full py-4 rounded font-bold uppercase tracking-widest transition-all mt-6 text-center font-sans ${
+                    shippingMethod === 'delivery' && (!selectedPostcode || selectedPostcode === 'other')
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-stone-900 text-white hover:bg-stone-800'
+                  }`}
+                >
+                  {shippingMethod === 'delivery' && (!selectedPostcode || selectedPostcode === 'other')
+                    ? 'Please Select Postcode'
+                    : 'Proceed to Checkout'}
+                </button>
+              )}
             </div>
           </div>
         </div>

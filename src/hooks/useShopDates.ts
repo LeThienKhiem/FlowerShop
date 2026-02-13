@@ -1,27 +1,42 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { defaultDateConfig, DateConfig, isSeasonalDate, isClosedDate, getSeasonalSurcharge } from '../lib/dateConfig';
+
+const STORE_SETTINGS_ID = 1;
 
 // Hook to manage shop dates (seasonal and closed dates)
 export const useShopDates = () => {
   const [dateConfig, setDateConfig] = useState<DateConfig>(defaultDateConfig);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load date configuration from Supabase (if available)
+  // Load date configuration from Supabase store_settings (closed_dates)
   useEffect(() => {
     const loadDateConfig = async () => {
       setIsLoading(true);
       try {
-        // TODO: Replace with actual Supabase table when ready
-        // const { data, error } = await supabase
-        //   .from('date_config')
-        //   .select('*')
-        //   .single();
-        
-        // For now, use default config
-        setDateConfig(defaultDateConfig);
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('closed_dates')
+          .eq('id', STORE_SETTINGS_ID)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error loading store_settings:', error);
+          setDateConfig(defaultDateConfig);
+          return;
+        }
+
+        const closedDates = Array.isArray(data?.closed_dates)
+          ? (data.closed_dates as string[]).filter((d): d is string => typeof d === 'string')
+          : defaultDateConfig.closed;
+
+        setDateConfig({
+          ...defaultDateConfig,
+          closed: closedDates,
+        });
       } catch (error) {
         console.error('Error loading date config:', error);
-        setDateConfig(defaultDateConfig); // Fallback to default
+        setDateConfig(defaultDateConfig);
       } finally {
         setIsLoading(false);
       }
@@ -50,20 +65,22 @@ export const useShopDates = () => {
     return !checkIsClosed(date);
   };
 
-  // Update date configuration (for admin)
+  // Update date configuration (for admin) — persists to store_settings
   const updateDateConfig = async (newConfig: DateConfig): Promise<boolean> => {
     try {
-      // TODO: Save to Supabase when ready
-      // const { error } = await supabase
-      //   .from('date_config')
-      //   .upsert({ id: 1, ...newConfig });
-      
-      // For now, just update local state
+      const { error } = await supabase
+        .from('store_settings')
+        .upsert(
+          { id: STORE_SETTINGS_ID, closed_dates: newConfig.closed },
+          { onConflict: 'id' }
+        );
+
+      if (error) {
+        console.error('Error saving store_settings:', error);
+        return false;
+      }
+
       setDateConfig(newConfig);
-      
-      // TODO: Save to localStorage as backup
-      localStorage.setItem('dateConfig', JSON.stringify(newConfig));
-      
       return true;
     } catch (error) {
       console.error('Error updating date config:', error);
