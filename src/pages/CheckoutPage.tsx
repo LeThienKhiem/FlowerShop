@@ -1101,6 +1101,22 @@ const CheckoutPage: React.FC = () => {
     const newErrors: Record<string, string> = {};
     let errorStep: 1 | 2 | 3 | null = null;
 
+    // Delivery / Pickup date is mandatory (check at the very beginning; do not modify logic below)
+    if (isMultiShipping) {
+      expandedItems.forEach(({ key: expandedKey, item }) => {
+        const selectedDate = multiDeliveryDates[expandedKey];
+        if (!selectedDate || !String(selectedDate).trim()) {
+          newErrors[`${expandedKey}-date`] = `Please select a delivery date for ${item.name}`;
+          if (!errorStep) errorStep = 2;
+        }
+      });
+    } else {
+      if (!deliveryDate || !String(deliveryDate).trim()) {
+        newErrors.deliveryDate = 'Please select a delivery date';
+        if (!errorStep) errorStep = 2;
+      }
+    }
+
     // Validate Step 1
     if (!isEmailValid) {
       newErrors.email = 'Please enter a valid email address';
@@ -1696,7 +1712,7 @@ const CheckoutPage: React.FC = () => {
 
                   <div className="mt-4">
                     <label htmlFor="deliveryDate" className="block text-sm font-semibold text-stone-900 mb-2 font-sans">
-                      {shippingMethod === 'delivery' ? 'Delivery Date' : 'Pickup Date'}
+                      {shippingMethod === 'delivery' ? 'Delivery Date' : 'Pickup Date'} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
