@@ -14,6 +14,7 @@ interface Promotion {
   contact_info: string | null;
   image_url: string | null;
   is_active: boolean;
+  show_button?: boolean;
 }
 
 function storageKey(id: number): string {
@@ -33,7 +34,7 @@ const PromotionPopup: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('promotions')
-          .select('id, shop_name, title, cta_text, cta_link, contact_info, image_url, is_active')
+          .select('id, shop_name, title, cta_text, cta_link, contact_info, image_url, is_active, show_button')
           .eq('id', PROMO_ID)
           .maybeSingle();
 
@@ -84,6 +85,7 @@ const PromotionPopup: React.FC = () => {
   const ctaLink = promo.cta_link?.trim() || '/shop';
   const contactInfo = promo.contact_info?.trim() || '';
   const imageUrl = promo.image_url?.trim() || null;
+  const showButton = promo.show_button !== false;
   const isExternalCta = /^https?:\/\//i.test(ctaLink);
 
   const handleCtaClick = (e: React.MouseEvent) => {
@@ -142,25 +144,26 @@ const PromotionPopup: React.FC = () => {
             {title}
           </h2>
 
-          {isExternalCta ? (
-            <a
-              href={ctaLink}
-              onClick={handleCtaClick}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center w-full max-w-xs px-8 py-3.5 rounded-full bg-pink-500 hover:bg-pink-600 text-white font-semibold text-base shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              {ctaText}
-            </a>
-          ) : (
-            <Link
-              to={ctaLink}
-              onClick={handleCtaClick}
-              className="inline-flex items-center justify-center w-full max-w-xs px-8 py-3.5 rounded-full bg-pink-500 hover:bg-pink-600 text-white font-semibold text-base shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              {ctaText}
-            </Link>
-          )}
+          {showButton &&
+            (isExternalCta ? (
+              <a
+                href={ctaLink}
+                onClick={handleCtaClick}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-full max-w-xs px-8 py-3.5 rounded-full bg-pink-500 hover:bg-pink-600 text-white font-semibold text-base shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                {ctaText}
+              </a>
+            ) : (
+              <Link
+                to={ctaLink}
+                onClick={handleCtaClick}
+                className="inline-flex items-center justify-center w-full max-w-xs px-8 py-3.5 rounded-full bg-pink-500 hover:bg-pink-600 text-white font-semibold text-base shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                {ctaText}
+              </Link>
+            ))}
 
           {contactInfo && (
             <p className="text-xs sm:text-sm text-gray-500 pt-2">

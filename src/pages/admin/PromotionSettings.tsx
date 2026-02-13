@@ -14,6 +14,7 @@ interface Promotion {
   contact_info: string | null;
   image_url: string | null;
   is_active: boolean;
+  show_button: boolean;
   created_at?: string;
 }
 
@@ -26,6 +27,7 @@ const defaultPromo: Promotion = {
   contact_info: 'Call us at (03) 9877 3164 for further assistance!',
   image_url: null,
   is_active: false,
+  show_button: true,
 };
 
 const PromotionSettings: React.FC = () => {
@@ -62,6 +64,7 @@ const PromotionSettings: React.FC = () => {
           contact_info: p.contact_info ?? '',
           image_url: p.image_url ?? null,
           is_active: p.is_active ?? false,
+          show_button: (p as { show_button?: boolean }).show_button !== false,
           created_at: p.created_at,
         });
         if (p.image_url) setImagePreview(p.image_url);
@@ -131,6 +134,7 @@ const PromotionSettings: React.FC = () => {
         contact_info: form.contact_info || null,
         image_url: imageUrl || null,
         is_active: form.is_active,
+        show_button: form.show_button,
       };
 
       const { error } = await supabase
@@ -194,6 +198,20 @@ const PromotionSettings: React.FC = () => {
           />
           <label htmlFor="is_active" className="font-medium text-gray-800 font-sans">
             Show popup
+          </label>
+        </div>
+
+        {/* Show CTA Button toggle */}
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="show_button"
+            checked={form.show_button}
+            onChange={(e) => setForm((p) => ({ ...p, show_button: e.target.checked }))}
+            className="w-4 h-4 rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+          />
+          <label htmlFor="show_button" className="font-medium text-gray-800 font-sans">
+            Show CTA Button (Shop Now)
           </label>
         </div>
 
@@ -262,35 +280,39 @@ const PromotionSettings: React.FC = () => {
           />
         </div>
 
-        {/* CTA label */}
-        <div>
-          <label htmlFor="cta_text" className="block text-sm font-medium text-gray-700 mb-1 font-sans">
-            CTA button label
-          </label>
-          <input
-            id="cta_text"
-            type="text"
-            value={form.cta_text ?? ''}
-            onChange={(e) => setForm((p) => ({ ...p, cta_text: e.target.value }))}
-            placeholder="Shop Now"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none font-sans"
-          />
-        </div>
+        {form.show_button && (
+          <>
+            {/* CTA label */}
+            <div>
+              <label htmlFor="cta_text" className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+                CTA button label
+              </label>
+              <input
+                id="cta_text"
+                type="text"
+                value={form.cta_text ?? ''}
+                onChange={(e) => setForm((p) => ({ ...p, cta_text: e.target.value }))}
+                placeholder="Shop Now"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none font-sans"
+              />
+            </div>
 
-        {/* CTA link */}
-        <div>
-          <label htmlFor="cta_link" className="block text-sm font-medium text-gray-700 mb-1 font-sans">
-            CTA link
-          </label>
-          <input
-            id="cta_link"
-            type="text"
-            value={form.cta_link ?? ''}
-            onChange={(e) => setForm((p) => ({ ...p, cta_link: e.target.value }))}
-            placeholder="/shop or /shop?category=..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none font-sans"
-          />
-        </div>
+            {/* CTA link */}
+            <div>
+              <label htmlFor="cta_link" className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+                CTA link
+              </label>
+              <input
+                id="cta_link"
+                type="text"
+                value={form.cta_link ?? ''}
+                onChange={(e) => setForm((p) => ({ ...p, cta_link: e.target.value }))}
+                placeholder="/shop or /shop?category=..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none font-sans"
+              />
+            </div>
+          </>
+        )}
 
         {/* Contact text */}
         <div>

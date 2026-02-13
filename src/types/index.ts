@@ -25,3 +25,17 @@ export interface Product {
   /** Absolute price for Platinum size when has_sizes is true. If null, frontend uses price * 1.6. */
   price_platinum?: number | null;
 }
+
+export interface Promotion {
+  id: number;
+  shop_name: string | null;
+  title: string | null;
+  cta_text: string | null;
+  cta_link: string | null;
+  contact_info: string | null;
+  image_url: string | null;
+  is_active: boolean;
+  /** When true, show the CTA button (Shop Now). When false, only title/image/message are shown. */
+  show_button?: boolean;
+  created_at?: string;
+}
