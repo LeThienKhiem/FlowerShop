@@ -43,7 +43,13 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    const { items, amount, couponCode, shippingCost } = await req.json();
+    const body = await req.json();
+    const { items, amount: amountFromBody, couponCode, shippingCost } = body;
+
+    // Single combined charge: use one amount only. Prefer explicit amount (grand total in cents).
+    const amountInCents = typeof amountFromBody === 'number' && Number.isFinite(amountFromBody)
+      ? Math.round(amountFromBody)
+      : null;
 
     const calculateSubtotalFromItems = (cartItems: unknown): number => {
       if (!Array.isArray(cartItems)) return 0;
@@ -63,16 +69,19 @@ serve(async (req) => {
       }, 0);
     };
 
-    const itemsSubtotalInCents = calculateSubtotalFromItems(items);
-    const shippingInCents = Number.isFinite(Number(shippingCost))
-      ? Math.round(Number(shippingCost) * 100)
-      : 0;
-    let baseAmountInCents = itemsSubtotalInCents + shippingInCents;
-    if (!baseAmountInCents && typeof amount === 'number') {
-      baseAmountInCents = amount;
+    // Use frontend grand total when provided (items + extras + shipping - discount). Otherwise fallback to items + shipping.
+    let baseAmountInCents: number;
+    if (amountInCents !== null && amountInCents > 0) {
+      baseAmountInCents = amountInCents;
+    } else {
+      const itemsSubtotalInCents = calculateSubtotalFromItems(items);
+      const shippingInCents = Number.isFinite(Number(shippingCost))
+        ? Math.round(Number(shippingCost) * 100)
+        : 0;
+      baseAmountInCents = itemsSubtotalInCents + shippingInCents;
     }
 
-    if (!baseAmountInCents || typeof baseAmountInCents !== 'number' || baseAmountInCents <= 0) {
+    if (!baseAmountInCents || baseAmountInCents <= 0) {
       return new Response(JSON.stringify({ error: 'Invalid amount provided.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -109,6 +118,7 @@ serve(async (req) => {
 
     const finalAmount = Math.max(baseAmountInCents, 50);
 
+    // Single charge: one PaymentIntent for the full grand total (never separate product vs shipping).
     const paymentIntent = await stripe.paymentIntents.create({
       amount: finalAmount,
       currency: 'aud',

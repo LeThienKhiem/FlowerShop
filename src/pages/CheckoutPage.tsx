@@ -864,6 +864,17 @@ const CheckoutPage: React.FC = () => {
     [baseTotal, discountAmountInCents]
   );
 
+  // Only create one PaymentIntent for the combined total. Avoid creating a PI before shipping is known (delivery),
+  // so we never create one for "subtotal only" and then another for "subtotal + shipping".
+  const hasStableAmount = useMemo(() => {
+    if (shippingMethod === 'pickup') return true;
+    if (shippingMethod === 'delivery' && isMultiToAddress) return true;
+    if (shippingMethod === 'delivery' && !isMultiToAddress) {
+      return deliveryZonePrice !== null;
+    }
+    return true;
+  }, [shippingMethod, isMultiToAddress, deliveryZonePrice]);
+
   // Check if any address has "Other" state (blocks order placement)
   const hasOtherState = shippingMethod === 'delivery'
     ? isMultiShipping
@@ -1078,11 +1089,20 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  // Initialize payment intent early: depend ONLY on amount. Validation (delivery date, recipient) runs on submit.
+  // Initialize a single PaymentIntent for the combined grand total (subtotal + shipping + surcharge - discount).
+  // Only create when amount is stable (e.g. for delivery, after zone is selected) to avoid creating one PI for
+  // subtotal and another for subtotal+shipping. When shipping method or zone changes, we create one new PI with
+  // the new combined total (replacing any previous clientSecret).
   useEffect(() => {
     if (hasOtherStateRef.current) {
       setClientSecret(null);
       setPaymentError(null);
+      return;
+    }
+    if (!hasStableAmount) {
+      setClientSecret(null);
+      setPaymentError(null);
+      lastPaymentAmountRef.current = null;
       return;
     }
     if (!amountInCents || amountInCents <= 0) {
@@ -1094,7 +1114,7 @@ const CheckoutPage: React.FC = () => {
       return;
     }
     fetchClientSecret();
-  }, [amountInCents]);
+  }, [amountInCents, hasStableAmount]);
 
   // Validation function - called only when Pay button is clicked
   const validateAllSteps = (): { isValid: boolean; errors: Record<string, string>; errorStep: 1 | 2 | 3 | null } => {
