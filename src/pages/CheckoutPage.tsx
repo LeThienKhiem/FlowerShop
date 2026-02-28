@@ -393,10 +393,11 @@ const CheckoutPage: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const lastPaymentAmountRef = useRef<number | null>(null);
+  const paymentIntentIdRef = useRef<string | null>(null);
+  const isFetchingSecretRef = useRef<boolean>(false);
   const hasOtherStateRef = useRef<boolean>(false);
   const isStep2ValidRef = useRef<boolean>(false);
   const clientSecretRef = useRef<string | null>(null);
@@ -1063,18 +1064,33 @@ const CheckoutPage: React.FC = () => {
   };
 
   const fetchClientSecret = async () => {
+    if (isFetchingSecretRef.current) return;
     if (isPaymentLoading) return;
+    isFetchingSecretRef.current = true;
     setIsPaymentLoading(true);
     setPaymentError(null);
 
     try {
-      logSecurityEvent('Payment intent requested', { amountInCents, paymentIntentId: paymentIntentId ?? undefined });
-      const body: { amount: number; paymentIntentId?: string } = { amount: amountInCents };
-      if (paymentIntentId) body.paymentIntentId = paymentIntentId;
+      const orderRef = String(getDisplayOrderId(getCurrentTransactionId()));
+      const customerEmail = (email ?? '').trim() || 'Guest';
+      const description = `Order #${orderRef} - ${customerEmail}`;
+
+      const currentPiId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('current_stripe_pi_id') : null;
+      const piIdToSend = currentPiId ?? paymentIntentIdRef.current;
+
+      const requestBody = {
+        amount: amountInCents,
+        paymentIntentId: currentPiId ?? undefined,
+        description,
+        orderId: orderRef,
+        email: customerEmail,
+      };
+
+      logSecurityEvent('Payment intent requested', { amountInCents, paymentIntentId: piIdToSend ?? undefined });
 
       const { data, error: invokeError } = await supabase.functions.invoke(
         'create-payment-intent',
-        { body }
+        { body: requestBody }
       );
 
       if (invokeError) {
@@ -1084,12 +1100,16 @@ const CheckoutPage: React.FC = () => {
       const secret = data?.clientSecret ?? null;
       const piId = data?.paymentIntentId ?? (typeof secret === 'string' && secret.includes('_secret_') ? secret.split('_secret_')[0] : null);
 
+      if (piId) {
+        paymentIntentIdRef.current = piId;
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('current_stripe_pi_id', piId);
+      }
+
       logSecurityEvent('Payment intent received', {
         amountInCents,
         hasClientSecret: Boolean(secret),
       });
       setClientSecret(secret);
-      if (piId) setPaymentIntentId(piId);
       lastPaymentAmountRef.current = amountInCents;
     } catch (err) {
       logSecurityEvent('Payment intent failed', {
@@ -1098,24 +1118,26 @@ const CheckoutPage: React.FC = () => {
       });
       console.error('Payment intent request failed:', err);
       setClientSecret(null);
-      setPaymentIntentId(null);
+      paymentIntentIdRef.current = null;
       setPaymentError(err instanceof Error ? err.message : 'Unable to initialize payment.');
     } finally {
+      isFetchingSecretRef.current = false;
       setIsPaymentLoading(false);
     }
   };
 
   // One PaymentIntent per checkout: create when amount is stable, update when amount changes (same PI).
+  // Debounce so rapid shipping/amount changes only trigger one request with the final amount.
   useEffect(() => {
     if (hasOtherStateRef.current) {
       setClientSecret(null);
-      setPaymentIntentId(null);
+      paymentIntentIdRef.current = null;
       setPaymentError(null);
       return;
     }
     if (!hasStableAmount) {
       setClientSecret(null);
-      setPaymentIntentId(null);
+      paymentIntentIdRef.current = null;
       setPaymentError(null);
       lastPaymentAmountRef.current = null;
       return;
@@ -1128,7 +1150,10 @@ const CheckoutPage: React.FC = () => {
     if (lastPaymentAmountRef.current === amountInCents && clientSecretRef.current) {
       return;
     }
-    fetchClientSecret();
+    const timeoutId = setTimeout(() => {
+      fetchClientSecret();
+    }, 500);
+    return () => clearTimeout(timeoutId);
   }, [amountInCents, hasStableAmount]);
 
   // Validation function - called only when Pay button is clicked
@@ -1206,6 +1231,8 @@ const CheckoutPage: React.FC = () => {
 
   const handlePaymentSuccess = async () => {
     if (isProcessing) return;
+
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('current_stripe_pi_id');
 
     setIsProcessing(true);
     logSecurityEvent('Payment confirmed', { amountInCents });

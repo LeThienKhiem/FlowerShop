@@ -43,13 +43,21 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    const body = await req.json();
-    const { items, amount: amountFromBody, couponCode, shippingCost, paymentIntentId } = body;
+    const rawBody = await req.json();
+    // Supabase client may send { body: payload }; unwrap so we always work with the actual payload.
+    const body = rawBody && typeof rawBody.body !== 'undefined' ? rawBody.body : rawBody;
 
-    // Single combined charge: use one amount only. Prefer explicit amount (grand total in cents).
-    const amountInCents = typeof amountFromBody === 'number' && Number.isFinite(amountFromBody)
-      ? Math.round(amountFromBody)
-      : null;
+    const amount = body.amount;
+    const paymentIntentId = body.paymentIntentId;
+    const description = body.description;
+    const orderId = body.orderId;
+    const email = body.email;
+    const couponCode = body.couponCode;
+    const items = body.items;
+    const shippingCost = body.shippingCost;
+
+    // Resolve amount in cents (frontend sends grand total in cents).
+    const amountInCents = typeof amount === 'number' && Number.isFinite(amount) ? Math.round(amount) : null;
 
     const calculateSubtotalFromItems = (cartItems: unknown): number => {
       if (!Array.isArray(cartItems)) return 0;
@@ -69,15 +77,12 @@ serve(async (req) => {
       }, 0);
     };
 
-    // Use frontend grand total when provided (items + extras + shipping - discount). Otherwise fallback to items + shipping.
     let baseAmountInCents: number;
     if (amountInCents !== null && amountInCents > 0) {
       baseAmountInCents = amountInCents;
     } else {
       const itemsSubtotalInCents = calculateSubtotalFromItems(items);
-      const shippingInCents = Number.isFinite(Number(shippingCost))
-        ? Math.round(Number(shippingCost) * 100)
-        : 0;
+      const shippingInCents = Number.isFinite(Number(shippingCost)) ? Math.round(Number(shippingCost) * 100) : 0;
       baseAmountInCents = itemsSubtotalInCents + shippingInCents;
     }
 
@@ -117,28 +122,49 @@ serve(async (req) => {
     }
 
     const finalAmount = Math.max(baseAmountInCents, 50);
+    const descriptionStr = typeof description === 'string' && description.trim()
+      ? description.trim()
+      : `Order #${orderId || 'Pending'}`;
+    const metadata = {
+      orderId: typeof orderId === 'string' && orderId ? orderId : 'N/A',
+      customerEmail: typeof email === 'string' && email ? email : 'N/A',
+    };
 
-    let clientSecret: string | null = null;
-    let intentId: string | null = null;
-
+    // If a valid paymentIntentId is provided, UPDATE IT.
     if (paymentIntentId && typeof paymentIntentId === 'string' && paymentIntentId.startsWith('pi_')) {
-      const updated = await stripe.paymentIntents.update(paymentIntentId, {
-        amount: finalAmount,
-      });
-      clientSecret = updated.client_secret;
-      intentId = updated.id;
-    } else {
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: finalAmount,
-        currency: 'aud',
-        automatic_payment_methods: { enabled: true },
-      });
-      clientSecret = paymentIntent.client_secret;
-      intentId = paymentIntent.id;
+      try {
+        const updatedIntent = await stripe.paymentIntents.update(paymentIntentId.trim(), {
+          amount: finalAmount,
+          description: descriptionStr,
+          metadata,
+        });
+        return new Response(
+          JSON.stringify({
+            clientSecret: updatedIntent.client_secret,
+            paymentIntentId: updatedIntent.id,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (updateError) {
+        console.error('Failed to update intent:', updateError);
+        // Fall through to create (e.g. intent was canceled or invalid).
+      }
     }
 
+    // If no paymentIntentId or update failed, CREATE A NEW ONE.
+    const newIntent = await stripe.paymentIntents.create({
+      amount: finalAmount,
+      currency: 'aud',
+      automatic_payment_methods: { enabled: true },
+      description: descriptionStr,
+      metadata,
+    });
+
     return new Response(
-      JSON.stringify({ clientSecret, paymentIntentId: intentId }),
+      JSON.stringify({
+        clientSecret: newIntent.client_secret,
+        paymentIntentId: newIntent.id,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
