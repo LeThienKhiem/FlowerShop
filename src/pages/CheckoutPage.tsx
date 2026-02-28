@@ -393,6 +393,7 @@ const CheckoutPage: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const lastPaymentAmountRef = useRef<number | null>(null);
@@ -864,16 +865,25 @@ const CheckoutPage: React.FC = () => {
     [baseTotal, discountAmountInCents]
   );
 
-  // Only create one PaymentIntent for the combined total. Avoid creating a PI before shipping is known (delivery),
-  // so we never create one for "subtotal only" and then another for "subtotal + shipping".
+  // Only create/update PaymentIntent when the total is final. Do NOT be true while the user is still
+  // typing address or hasn't selected a shipping zone (avoids PI for subtotal then a second for subtotal+shipping).
   const hasStableAmount = useMemo(() => {
     if (shippingMethod === 'pickup') return true;
-    if (shippingMethod === 'delivery' && isMultiToAddress) return true;
     if (shippingMethod === 'delivery' && !isMultiToAddress) {
       return deliveryZonePrice !== null;
     }
+    if (shippingMethod === 'delivery' && isMultiToAddress) {
+      if (expandedItems.length === 0) return false;
+      return expandedItems.every(({ key }) => {
+        const addr = splitShipments[key];
+        if (!addr) return false;
+        if (addr.state !== 'VIC') return true;
+        if (!addr.postcode || addr.postcode === 'other') return false;
+        return Boolean(findZoneForAddress(addr.postcode, addr.suburb));
+      });
+    }
     return true;
-  }, [shippingMethod, isMultiToAddress, deliveryZonePrice]);
+  }, [shippingMethod, isMultiToAddress, deliveryZonePrice, expandedItems, splitShipments]);
 
   // Check if any address has "Other" state (blocks order placement)
   const hasOtherState = shippingMethod === 'delivery'
@@ -1058,23 +1068,28 @@ const CheckoutPage: React.FC = () => {
     setPaymentError(null);
 
     try {
-      logSecurityEvent('Payment intent requested', { amountInCents });
+      logSecurityEvent('Payment intent requested', { amountInCents, paymentIntentId: paymentIntentId ?? undefined });
+      const body: { amount: number; paymentIntentId?: string } = { amount: amountInCents };
+      if (paymentIntentId) body.paymentIntentId = paymentIntentId;
+
       const { data, error: invokeError } = await supabase.functions.invoke(
         'create-payment-intent',
-        {
-          body: { amount: amountInCents },
-        }
+        { body }
       );
 
       if (invokeError) {
         throw new Error(invokeError.message || 'Unable to initialize payment.');
       }
 
+      const secret = data?.clientSecret ?? null;
+      const piId = data?.paymentIntentId ?? (typeof secret === 'string' && secret.includes('_secret_') ? secret.split('_secret_')[0] : null);
+
       logSecurityEvent('Payment intent received', {
         amountInCents,
-        hasClientSecret: Boolean(data?.clientSecret),
+        hasClientSecret: Boolean(secret),
       });
-      setClientSecret(data?.clientSecret ?? null);
+      setClientSecret(secret);
+      if (piId) setPaymentIntentId(piId);
       lastPaymentAmountRef.current = amountInCents;
     } catch (err) {
       logSecurityEvent('Payment intent failed', {
@@ -1083,24 +1098,24 @@ const CheckoutPage: React.FC = () => {
       });
       console.error('Payment intent request failed:', err);
       setClientSecret(null);
+      setPaymentIntentId(null);
       setPaymentError(err instanceof Error ? err.message : 'Unable to initialize payment.');
     } finally {
       setIsPaymentLoading(false);
     }
   };
 
-  // Initialize a single PaymentIntent for the combined grand total (subtotal + shipping + surcharge - discount).
-  // Only create when amount is stable (e.g. for delivery, after zone is selected) to avoid creating one PI for
-  // subtotal and another for subtotal+shipping. When shipping method or zone changes, we create one new PI with
-  // the new combined total (replacing any previous clientSecret).
+  // One PaymentIntent per checkout: create when amount is stable, update when amount changes (same PI).
   useEffect(() => {
     if (hasOtherStateRef.current) {
       setClientSecret(null);
+      setPaymentIntentId(null);
       setPaymentError(null);
       return;
     }
     if (!hasStableAmount) {
       setClientSecret(null);
+      setPaymentIntentId(null);
       setPaymentError(null);
       lastPaymentAmountRef.current = null;
       return;

@@ -44,7 +44,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     const body = await req.json();
-    const { items, amount: amountFromBody, couponCode, shippingCost } = body;
+    const { items, amount: amountFromBody, couponCode, shippingCost, paymentIntentId } = body;
 
     // Single combined charge: use one amount only. Prefer explicit amount (grand total in cents).
     const amountInCents = typeof amountFromBody === 'number' && Number.isFinite(amountFromBody)
@@ -118,17 +118,29 @@ serve(async (req) => {
 
     const finalAmount = Math.max(baseAmountInCents, 50);
 
-    // Single charge: one PaymentIntent for the full grand total (never separate product vs shipping).
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: finalAmount,
-      currency: 'aud',
-      automatic_payment_methods: { enabled: true },
-    });
+    let clientSecret: string | null = null;
+    let intentId: string | null = null;
 
-    return new Response(JSON.stringify({ clientSecret: paymentIntent.client_secret }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if (paymentIntentId && typeof paymentIntentId === 'string' && paymentIntentId.startsWith('pi_')) {
+      const updated = await stripe.paymentIntents.update(paymentIntentId, {
+        amount: finalAmount,
+      });
+      clientSecret = updated.client_secret;
+      intentId = updated.id;
+    } else {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: finalAmount,
+        currency: 'aud',
+        automatic_payment_methods: { enabled: true },
+      });
+      clientSecret = paymentIntent.client_secret;
+      intentId = paymentIntent.id;
+    }
+
+    return new Response(
+      JSON.stringify({ clientSecret, paymentIntentId: intentId }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Stripe payment intent error:', error);
     return new Response(JSON.stringify({ error: 'Failed to create payment intent.' }), {
