@@ -80,6 +80,7 @@ interface PaymentActionsProps {
     errorStep: 1 | 2 | 3 | null;
   };
   setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onBeforeConfirm?: () => Promise<string | null>;
 }
 
 // Shop information
@@ -231,6 +232,7 @@ const PaymentActions: React.FC<PaymentActionsProps> = ({
   clientSecret,
   fetchClientSecret,
   handlePaymentSuccess,
+  onBeforeConfirm,
   validateForm,
   setFormErrors,
   scrollToFirstError,
@@ -343,6 +345,7 @@ const PaymentActions: React.FC<PaymentActionsProps> = ({
                 clientSecret={clientSecret}
                 isProcessing={isPaymentLoading}
                 onSuccess={handlePaymentSuccess}
+                onBeforeConfirm={onBeforeConfirm}
                 onValidate={() => {
                   const requiredErrors = validateForm();
                   setFormErrors(requiredErrors);
@@ -397,6 +400,7 @@ const CheckoutPage: React.FC = () => {
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const lastPaymentAmountRef = useRef<number | null>(null);
   const paymentIntentIdRef = useRef<string | null>(null);
+  const pendingOrderIdRef = useRef<string | number | null>(null);
   const isFetchingSecretRef = useRef<boolean>(false);
   const hasOtherStateRef = useRef<boolean>(false);
   const isStep2ValidRef = useRef<boolean>(false);
@@ -1156,6 +1160,169 @@ const CheckoutPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [amountInCents, hasStableAmount]);
 
+  /** Runs before confirmPayment: insert order (awaiting_payment), sync Stripe description with real order ID, then charge. */
+  const onBeforeConfirm = async (): Promise<string | null> => {
+    try {
+      const newOrder: any = {
+        total_amount: finalTotal,
+        coupon_code: appliedCoupon?.code ?? null,
+        discount_total: discountAmount,
+        final_amount: finalTotal,
+        email: email,
+        status: 'awaiting_payment',
+        shipping_method: shippingMethod,
+      };
+
+      if (isMultiShipping) {
+        const customerDetails: any = {
+          email: email,
+          addresses: expandedItems.map(({ item, index, key: expandedKey }) => {
+            const addr = multiAddresses[expandedKey];
+            const deliveryDate = multiDeliveryDates[expandedKey];
+            return {
+              itemId: item.id,
+              itemName: item.name,
+              itemIndex: index + 1,
+              totalQuantity: item.quantity,
+              size: item.selectedSize,
+              address: addr,
+              deliveryDate: deliveryDate,
+            };
+          }),
+        };
+        newOrder.customer_details = customerDetails;
+      } else {
+        newOrder.first_name = firstName;
+        newOrder.last_name = lastName;
+        newOrder.recipient_details = shippingMethod === 'delivery'
+          ? {
+              firstName: recipientFirstName,
+              lastName: recipientLastName,
+              phone: recipientPhone,
+              address: address,
+              state: state,
+              postcode: selectedPostcode,
+              message: globalMessage.trim() || '',
+            }
+          : null;
+        newOrder.customer_details = {
+          email: email,
+          sender: { firstName: firstName, lastName: lastName, phone: phone },
+          recipient: {
+            firstName: recipientFirstName,
+            lastName: recipientLastName,
+            phone: recipientPhone,
+          },
+          address: address,
+          state: state,
+          postcode: selectedPostcode,
+        };
+      }
+
+      const { data: insertedOrder, error: insertError } = await supabase
+        .from('orders')
+        .insert([newOrder])
+        .select();
+
+      if (insertError) {
+        logSecurityEvent('Order insert failed', { error: insertError.message });
+        console.error('Order insert failed:', insertError.message);
+        alert(`Order save error: ${insertError.message}`);
+        return null;
+      }
+
+      const orderId = insertedOrder?.[0]?.id;
+      if (!orderId) {
+        alert('Failed to create order. Please try again.');
+        return null;
+      }
+
+      const orderItemsPayload = isMultiToAddress
+        ? cartItems.flatMap((item) =>
+            Array.from({ length: item.quantity }, (_, index) => {
+              const splitKey = getSplitItemKey(item, index);
+              const splitShipment = splitShipments[splitKey];
+              const recipientInfo = buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]);
+              const deliveryDetails = buildItemDeliveryDetails(
+                recipientInfo,
+                deliveryDate,
+                itemMessages[splitKey] ?? '',
+                splitShipment?.postcode
+              );
+              return {
+                order_id: orderId,
+                product_id: item.id,
+                product_name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
+                quantity: 1,
+                price: getDisplayPrice(item),
+                image_url: getImageUrl(item),
+                selected_options: buildSelectedOptions(item),
+                recipient_info: recipientInfo,
+                ...getExtraQuantitiesForRow(item, 1),
+                ...deliveryDetails,
+              };
+            })
+          )
+        : cartItems.map((item) => {
+            const recipientInfo = buildRecipientInfoFromMain();
+            const deliveryDetails = buildItemDeliveryDetails(
+              recipientInfo,
+              deliveryDate,
+              globalMessage,
+              selectedPostcode
+            );
+            return {
+              order_id: orderId,
+              product_id: item.id,
+              product_name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
+              quantity: item.quantity,
+              price: getDisplayPrice(item),
+              image_url: getImageUrl(item),
+              selected_options: buildSelectedOptions(item),
+              recipient_info: recipientInfo,
+              ...getExtraQuantitiesForRow(item, item.quantity),
+              ...deliveryDetails,
+            };
+          });
+
+      const { error: orderItemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsPayload);
+
+      if (orderItemsError) {
+        logSecurityEvent('Order items insert failed', { error: orderItemsError.message });
+        console.error('Error inserting order items:', orderItemsError);
+        alert('Failed to save order items. Please try again.');
+        return null;
+      }
+
+      const paymentIntentId =
+        typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('current_stripe_pi_id') : null;
+      if (!paymentIntentId) {
+        alert('Payment session expired. Please refresh and try again.');
+        return null;
+      }
+
+      const { error: updateError } = await supabase.functions.invoke('update-payment-intent', {
+        body: { paymentIntentId, orderId, email: (email ?? '').trim() || 'Guest' },
+      });
+
+      if (updateError) {
+        console.error('Failed to sync Stripe with order ID:', updateError);
+        alert('Could not prepare payment. Please try again.');
+        return null;
+      }
+
+      pendingOrderIdRef.current = orderId;
+      logSecurityEvent('Order prepared for payment', { orderId });
+      return String(orderId);
+    } catch (err) {
+      console.error('onBeforeConfirm error:', err);
+      alert(`Something went wrong: ${err instanceof Error ? err.message : 'Please try again.'}`);
+      return null;
+    }
+  };
+
   // Validation function - called only when Pay button is clicked
   const validateAllSteps = (): { isValid: boolean; errors: Record<string, string>; errorStep: 1 | 2 | 3 | null } => {
     const newErrors: Record<string, string> = {};
@@ -1232,164 +1399,35 @@ const CheckoutPage: React.FC = () => {
   const handlePaymentSuccess = async () => {
     if (isProcessing) return;
 
+    const paymentIntentId =
+      typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('current_stripe_pi_id') : null;
     if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('current_stripe_pi_id');
 
+    const orderId = pendingOrderIdRef.current;
+    if (!orderId) {
+      alert('Order session lost. Please contact support with your payment details.');
+      return;
+    }
+
     setIsProcessing(true);
-    logSecurityEvent('Payment confirmed', { amountInCents });
-
-    if (!email || !phone) {
-      alert('Please enter your email and phone number before paying.');
-      setIsProcessing(false);
-      return;
-    }
-
-    // Validate all steps before processing payment
-    const validation = validateAllSteps();
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      setIsProcessing(false);
-      return;
-    }
-
-    // Clear any previous errors
-    setErrors({});
+    logSecurityEvent('Payment confirmed', { amountInCents, orderId });
 
     try {
-      const newOrder: any = {
-        total_amount: finalTotal,
-        coupon_code: appliedCoupon?.code ?? null,
-        discount_total: discountAmount,
-        final_amount: finalTotal,
-        email: email,
-        status: 'Pending',
-        shipping_method: shippingMethod,
-      };
-
-      if (isMultiShipping) {
-        const customerDetails: any = {
-          email: email,
-          addresses: expandedItems.map(({ item, index, key: expandedKey }) => {
-            const addr = multiAddresses[expandedKey];
-            const deliveryDate = multiDeliveryDates[expandedKey];
-            return {
-              itemId: item.id,
-              itemName: item.name,
-              itemIndex: index + 1,
-              totalQuantity: item.quantity,
-              size: item.selectedSize,
-              address: addr,
-              deliveryDate: deliveryDate,
-            };
-          }),
-        };
-        newOrder.customer_details = customerDetails;
-      } else {
-        newOrder.first_name = firstName;
-        newOrder.last_name = lastName;
-        newOrder.recipient_details = shippingMethod === 'delivery'
-          ? {
-              firstName: recipientFirstName,
-              lastName: recipientLastName,
-              phone: recipientPhone,
-              address: address,
-              state: state,
-              postcode: selectedPostcode,
-              message: globalMessage.trim() || '',
-            }
-          : null;
-        newOrder.customer_details = {
-          email: email,
-          sender: {
-            firstName: firstName,
-            lastName: lastName,
-            phone: phone,
-          },
-          recipient: {
-            firstName: recipientFirstName,
-            lastName: recipientLastName,
-            phone: recipientPhone,
-          },
-          address: address,
-          state: state,
-          postcode: selectedPostcode,
-        };
-      }
-
-      const { data: insertedOrder, error: insertError } = await supabase
+      const { error: updateError } = await supabase
         .from('orders')
-        .insert([newOrder])
-        .select();
+        .update({
+          status: 'paid',
+          payment_status: 'succeeded',
+          stripe_payment_id: paymentIntentId,
+        })
+        .eq('id', orderId);
 
-      if (insertError) {
-        logSecurityEvent('Order insert failed', { error: insertError.message });
-        console.error('Order insert failed:', insertError.message);
-        alert(`Order save error: ${insertError.message}`);
+      if (updateError) {
+        logSecurityEvent('Order update failed', { error: updateError.message });
+        console.error('Order update failed:', updateError.message);
+        alert(`Could not update order: ${updateError.message}. Please contact support.`);
+        setIsProcessing(false);
         return;
-      }
-
-      const orderId = insertedOrder?.[0]?.id;
-      logSecurityEvent('Order created', { orderId });
-
-      if (!orderId) {
-        throw new Error('Failed to retrieve order ID after insert.');
-      }
-
-      const orderItemsPayload = isMultiToAddress
-        ? cartItems.flatMap((item) =>
-            Array.from({ length: item.quantity }, (_, index) => {
-              const splitKey = getSplitItemKey(item, index);
-              const splitShipment = splitShipments[splitKey];
-              const recipientInfo = buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]);
-              const deliveryDetails = buildItemDeliveryDetails(
-                recipientInfo,
-                deliveryDate,
-                itemMessages[splitKey] ?? '',
-                splitShipment?.postcode
-              );
-              return {
-                order_id: orderId,
-                product_id: item.id,
-                product_name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
-                quantity: 1,
-                price: getDisplayPrice(item),
-                image_url: getImageUrl(item),
-                selected_options: buildSelectedOptions(item),
-                recipient_info: recipientInfo,
-                ...getExtraQuantitiesForRow(item, 1),
-                ...deliveryDetails,
-              };
-            })
-          )
-        : cartItems.map((item) => {
-            const recipientInfo = buildRecipientInfoFromMain();
-            const deliveryDetails = buildItemDeliveryDetails(
-              recipientInfo,
-              deliveryDate,
-              globalMessage,
-              selectedPostcode
-            );
-            return {
-              order_id: orderId,
-              product_id: item.id,
-              product_name: `${item.name}${item.selectedSize ? ` (${item.selectedSize})` : ''}`,
-              quantity: item.quantity,
-              price: getDisplayPrice(item),
-              image_url: getImageUrl(item),
-              selected_options: buildSelectedOptions(item),
-              recipient_info: recipientInfo,
-              ...getExtraQuantitiesForRow(item, item.quantity),
-              ...deliveryDetails,
-            };
-          });
-
-      const { error: orderItemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsPayload);
-
-      if (orderItemsError) {
-        logSecurityEvent('Order items insert failed', { error: orderItemsError.message });
-        console.error('Error inserting order items:', orderItemsError);
-        throw new Error('Failed to save order items.');
       }
 
       const orderDetails = cartItems
@@ -1399,7 +1437,7 @@ const CheckoutPage: React.FC = () => {
         })
         .join(', ');
 
-      const rawOrderId = insertedOrder?.[0]?.id || `ORDER-${Date.now()}`;
+      const rawOrderId = orderId;
       const displayOrderId = getDisplayOrderId(rawOrderId);
       const orderData: OrderData = {
         id: displayOrderId,
@@ -2307,6 +2345,7 @@ const CheckoutPage: React.FC = () => {
                 clientSecret={clientSecret}
                 fetchClientSecret={fetchClientSecret}
                 handlePaymentSuccess={handlePaymentSuccess}
+                onBeforeConfirm={onBeforeConfirm}
                 validateForm={validateForm}
                 setFormErrors={setFormErrors}
                 scrollToFirstError={scrollToFirstError}

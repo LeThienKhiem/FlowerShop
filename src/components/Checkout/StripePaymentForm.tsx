@@ -7,6 +7,8 @@ interface StripePaymentFormProps {
   clientSecret: string;
   onSuccess: () => void;
   onValidate?: () => boolean;
+  /** If provided, runs before confirmPayment. Returns orderId string or null on failure. Charge only proceeds if non-null. */
+  onBeforeConfirm?: () => Promise<string | null>;
   isProcessing?: boolean;
 }
 
@@ -18,6 +20,7 @@ const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
   amount,
   onSuccess,
   onValidate,
+  onBeforeConfirm,
   isProcessing: isProcessingExternal = false,
 }) => {
   const stripe = useStripe();
@@ -59,7 +62,15 @@ const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
       return;
     }
 
-    console.log('[Pay] Confirming payment...');
+    if (onBeforeConfirm) {
+      setMessage(null);
+      const orderId = await onBeforeConfirm();
+      if (!orderId) {
+        setMessage('Could not prepare order. Please try again.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -139,6 +150,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
   clientSecret,
   onSuccess,
   onValidate,
+  onBeforeConfirm,
   isProcessing,
 }) => {
   const appearance = useMemo(
@@ -178,6 +190,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({
         amount={amount}
         onSuccess={onSuccess}
         onValidate={onValidate}
+        onBeforeConfirm={onBeforeConfirm}
         isProcessing={isProcessing}
       />
     </Elements>
