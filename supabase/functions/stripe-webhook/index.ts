@@ -58,7 +58,7 @@ serve(async (req) => {
     const { error } = await supabaseAdmin
       .from("orders")
       .update({
-        status: "paid",
+        status: "Processing",
         payment_status: "succeeded",
         stripe_payment_id: session.payment_intent,
       })

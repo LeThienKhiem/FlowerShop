@@ -1160,7 +1160,7 @@ const CheckoutPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [amountInCents, hasStableAmount]);
 
-  /** Runs before confirmPayment: insert order (awaiting_payment), sync Stripe description with real order ID, then charge. */
+  /** Runs before confirmPayment: insert order (Pending until paid), sync Stripe description with real order ID, then charge. */
   const onBeforeConfirm = async (): Promise<string | null> => {
     try {
       const newOrder: any = {
@@ -1169,7 +1169,7 @@ const CheckoutPage: React.FC = () => {
         discount_total: discountAmount,
         final_amount: finalTotal,
         email: email,
-        status: 'awaiting_payment',
+        status: 'Pending',
         shipping_method: shippingMethod,
       };
 
@@ -1416,7 +1416,7 @@ const CheckoutPage: React.FC = () => {
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          status: 'paid',
+          status: 'Processing',
           payment_status: 'succeeded',
           stripe_payment_id: paymentIntentId,
         })
