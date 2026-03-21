@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -27,76 +27,85 @@ const StripePaymentInner: React.FC<StripePaymentInnerProps> = ({
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  /** Synchronous guard: React state updates are async, so double-clicks can both pass isSubmitting checks. */
+  const confirmInFlightRef = useRef(false);
 
+  const releaseSubmitLock = () => {
+    confirmInFlightRef.current = false;
+    setIsSubmitting(false);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log('[Pay] Submit clicked', { isSubmitting, isProcessingExternal, hasStripe: !!stripe, hasElements: !!elements });
 
-    if (isSubmitting || isProcessingExternal) {
-      console.warn('[Pay] Blocked: already submitting or parent is processing');
-      setMessage(isSubmitting ? 'Payment in progress...' : 'Please wait, payment is initialising...');
+    if (confirmInFlightRef.current || isSubmitting || isProcessingExternal) {
       return;
-    }
-    setMessage(null);
-
-    if (onValidate) {
-      const valid = onValidate();
-      if (!valid) {
-        console.warn('[Pay] Blocked: validation failed (check required fields above)');
-        setMessage('Please fix the errors above (e.g. email, phone, delivery date) and try again.');
-        return;
-      }
     }
 
     if (!stripe || !elements) {
-      console.warn('[Pay] Blocked: Stripe not ready', { stripe: !!stripe, elements: !!elements });
       setMessage('Stripe is still loading. Please try again in a moment.');
       return;
     }
 
-    const paymentEl = elements?.getElement('payment');
-    if (!paymentEl) {
-      console.error('[Pay] Blocked: Payment Element not mounted');
-      setMessage('Payment form not ready. Please wait a moment and try again.');
-      return;
-    }
+    confirmInFlightRef.current = true;
+    setIsSubmitting(true);
+    setMessage(null);
 
-    if (onBeforeConfirm) {
-      setMessage(null);
-      const orderId = await onBeforeConfirm();
-      if (!orderId) {
-        setMessage('Could not prepare order. Please try again.');
+    try {
+      if (onValidate) {
+        const valid = onValidate();
+        if (!valid) {
+          setMessage('Please fix the errors above (e.g. email, phone, delivery date) and try again.');
+          releaseSubmitLock();
+          return;
+        }
+      }
+
+      const paymentEl = elements.getElement('payment');
+      if (!paymentEl) {
+        setMessage('Payment form not ready. Please wait a moment and try again.');
+        releaseSubmitLock();
         return;
       }
+
+      if (onBeforeConfirm) {
+        const orderId = await onBeforeConfirm();
+        if (!orderId) {
+          setMessage('Could not prepare order. Please try again.');
+          releaseSubmitLock();
+          return;
+        }
+      }
+
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        setMessage(error.message || 'Payment failed. Please try again.');
+        releaseSubmitLock();
+        return;
+      }
+
+      if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'processing') {
+        onSuccess();
+        return;
+      }
+
+      setMessage('Payment confirmation requires additional steps. Please try again.');
+      releaseSubmitLock();
+    } catch {
+      setMessage('Something went wrong. Please try again.');
+      releaseSubmitLock();
     }
-
-    setIsSubmitting(true);
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.href,
-      },
-      redirect: 'if_required',
-    });
-
-    if (error) {
-      setMessage(error.message || 'Payment failed. Please try again.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'processing') {
-      onSuccess();
-      return;
-    }
-
-    setMessage('Payment confirmation requires additional steps. Please try again.');
-    setIsSubmitting(false);
   };
 
   const isBusy = isSubmitting || isProcessingExternal;
-  const isButtonDisabled = isSubmitting || !stripe;
+  const isButtonDisabled = isBusy || !stripe || !elements;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

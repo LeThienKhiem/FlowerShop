@@ -401,6 +401,10 @@ const CheckoutPage: React.FC = () => {
   const lastPaymentAmountRef = useRef<number | null>(null);
   const paymentIntentIdRef = useRef<string | null>(null);
   const pendingOrderIdRef = useRef<string | number | null>(null);
+  /** Prevents concurrent onBeforeConfirm from inserting two orders before pendingOrderIdRef is set. */
+  const orderPrepInFlightRef = useRef(false);
+  /** Prevents double handlePaymentSuccess before React state isProcessing flips (e.g. duplicate updates/side effects). */
+  const paymentSuccessHandledRef = useRef(false);
   const isFetchingSecretRef = useRef<boolean>(false);
   const hasOtherStateRef = useRef<boolean>(false);
   const isStep2ValidRef = useRef<boolean>(false);
@@ -1162,7 +1166,18 @@ const CheckoutPage: React.FC = () => {
 
   /** Runs before confirmPayment: insert order (Pending until paid), sync Stripe description with real order ID, then charge. */
   const onBeforeConfirm = async (): Promise<string | null> => {
+    let acquiredPrepLock = false;
     try {
+      // Idempotent: same checkout session already prepared (avoids second insert).
+      if (pendingOrderIdRef.current != null && String(pendingOrderIdRef.current).trim() !== '') {
+        return String(pendingOrderIdRef.current);
+      }
+      if (orderPrepInFlightRef.current) {
+        return null;
+      }
+      orderPrepInFlightRef.current = true;
+      acquiredPrepLock = true;
+
       const newOrder: any = {
         total_amount: finalTotal,
         coupon_code: appliedCoupon?.code ?? null,
@@ -1320,6 +1335,10 @@ const CheckoutPage: React.FC = () => {
       console.error('onBeforeConfirm error:', err);
       alert(`Something went wrong: ${err instanceof Error ? err.message : 'Please try again.'}`);
       return null;
+    } finally {
+      if (acquiredPrepLock) {
+        orderPrepInFlightRef.current = false;
+      }
     }
   };
 
@@ -1398,6 +1417,7 @@ const CheckoutPage: React.FC = () => {
 
   const handlePaymentSuccess = async () => {
     if (isProcessing) return;
+    if (paymentSuccessHandledRef.current) return;
 
     const paymentIntentId =
       typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('current_stripe_pi_id') : null;
@@ -1409,6 +1429,7 @@ const CheckoutPage: React.FC = () => {
       return;
     }
 
+    paymentSuccessHandledRef.current = true;
     setIsProcessing(true);
     logSecurityEvent('Payment confirmed', { amountInCents, orderId });
 
@@ -1426,6 +1447,7 @@ const CheckoutPage: React.FC = () => {
         logSecurityEvent('Order update failed', { error: updateError.message });
         console.error('Order update failed:', updateError.message);
         alert(`Could not update order: ${updateError.message}. Please contact support.`);
+        paymentSuccessHandledRef.current = false;
         setIsProcessing(false);
         return;
       }
@@ -1582,6 +1604,7 @@ const CheckoutPage: React.FC = () => {
       navigate('/success');
     } catch (error) {
       console.error('Error placing order:', error);
+      paymentSuccessHandledRef.current = false;
       alert(`Order placement failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setIsProcessing(false);

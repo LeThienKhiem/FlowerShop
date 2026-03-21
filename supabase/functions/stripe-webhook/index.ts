@@ -43,6 +43,31 @@ serve(async (req) => {
     return new Response("Invalid signature", { status: 400 });
   }
 
+  // Payment Element / confirmPayment: no Checkout Session — rely on PI metadata.orderId (set by update-payment-intent).
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const orderId = pi.metadata?.orderId;
+
+    if (!orderId) {
+      console.log("payment_intent.succeeded: no orderId in metadata, skipping order update");
+    } else {
+      const { error } = await supabaseAdmin
+        .from("orders")
+        .update({
+          status: "Processing",
+          payment_status: "succeeded",
+          stripe_payment_id: pi.id,
+        })
+        .eq("id", orderId);
+
+      if (error) {
+        console.error("payment_intent.succeeded: failed to update order:", error);
+        return new Response("Failed to update order", { status: 500 });
+      }
+      console.log("payment_intent.succeeded: order updated", orderId);
+    }
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const orderId = session.metadata?.orderId;
