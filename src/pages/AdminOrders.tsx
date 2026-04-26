@@ -286,6 +286,7 @@ const AdminOrders: React.FC = () => {
         imageUrl: item.product?.images?.[0] || item.product?.image_url || item.image_url || '',
         options: extractItemOptions(item),
         recipientInfo: item.recipient_info || null,
+        cardMessage: (item as { card_message?: string | null }).card_message || '',
       }));
     }
     const details = order.customer_details || {};
@@ -614,6 +615,11 @@ const AdminOrders: React.FC = () => {
                                     .join(', ') || 'N/A'}
                                   {' | '}
                                   {item.recipientInfo.phone || 'N/A'}
+                                </div>
+                              )}
+                              {item.cardMessage && (
+                                <div className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs text-gray-800 border border-amber-100">
+                                  <span className="font-semibold">Message:</span> {item.cardMessage}
                                 </div>
                               )}
                             </div>

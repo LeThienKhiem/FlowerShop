@@ -30,6 +30,7 @@ interface CartContextType {
     newPrice?: number,
     newSelectedOptions?: Record<string, any>
   ) => void;
+  updateCartItemMessage: (productId: number | string, size: string, newMessage: string) => void;
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
@@ -208,6 +209,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  // Update only the gift/card message for a specific cart line.
+  const updateCartItemMessage = (productId: number | string, size: string, newMessage: string) => {
+    setCartItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === productId && item.selectedSize === size
+          ? { ...item, message: newMessage }
+          : item
+      )
+    );
+  };
+
   // Clear entire cart
   const clearCart = () => {
     setCartItems([]);
@@ -228,6 +240,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     removeFromCart,
     updateQuantity,
     updateCartItem,
+    updateCartItemMessage,
     clearCart,
     cartTotal,
     cartCount,

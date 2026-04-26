@@ -372,7 +372,7 @@ const PaymentActions: React.FC<PaymentActionsProps> = ({
 
 
 const CheckoutPage: React.FC = () => {
-  const { cartItems, clearCart } = useCart();
+  const { cartItems, clearCart, updateCartItemMessage } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -426,7 +426,6 @@ const CheckoutPage: React.FC = () => {
   const [recipientLastName, setRecipientLastName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [isRecipientSameAsSender, setIsRecipientSameAsSender] = useState(false);
-  const [globalMessage, setGlobalMessage] = useState('');
   const [itemMessages, setItemMessages] = useState<Record<string, string>>({});
   const [address, setAddress] = useState('');
   const [state, setState] = useState('VIC'); // Default to Victoria
@@ -637,6 +636,26 @@ const CheckoutPage: React.FC = () => {
     }
   }, [totalQuantity, isMultiShipping]);
 
+  // Seed split-shipment per-row card messages from each cart item's message.
+  // Only fills entries that don't already have a value, so user edits aren't overwritten.
+  useEffect(() => {
+    if (!isMultiToAddress) return;
+    setItemMessages((prev) => {
+      let changed = false;
+      const next: Record<string, string> = { ...prev };
+      cartItems.forEach((item) => {
+        Array.from({ length: item.quantity }).forEach((_, index) => {
+          const splitKey = getSplitItemKey(item, index);
+          if (!(splitKey in next)) {
+            next[splitKey] = item.message ?? '';
+            changed = true;
+          }
+        });
+      });
+      return changed ? next : prev;
+    });
+  }, [cartItems, isMultiToAddress]);
+
   const updateSplitShipment = (itemKey: string, field: keyof AddressData, value: string) => {
     setSplitShipments((prev) => {
       const current = prev[itemKey];
@@ -746,7 +765,7 @@ const CheckoutPage: React.FC = () => {
     return fromOptions.length > 0 ? fromOptions : fromMessage;
   };
 
-  const buildRecipientInfoFromSplit = (shipment: AddressData | undefined, message?: string) => {
+  const buildRecipientInfoFromSplit = (shipment: AddressData | undefined) => {
     if (!shipment) return null;
     const name = `${shipment.firstName ?? ''} ${shipment.lastName ?? ''}`.trim();
     const suburb = shipment.suburb || getSuburbFromPostcode(shipment.postcode) || undefined;
@@ -756,13 +775,11 @@ const CheckoutPage: React.FC = () => {
       suburb: suburb,
       state: shipment.state || undefined,
       phone: shipment.phone || undefined,
-      message: message?.trim() || undefined,
     };
   };
 
   const buildRecipientInfoFromMain = () => {
-    const hasMessage = globalMessage.trim();
-    if (shippingMethod !== 'delivery' && !hasMessage) return null;
+    if (shippingMethod !== 'delivery') return null;
     const name = `${recipientFirstName ?? ''} ${recipientLastName ?? ''}`.trim();
     const suburb = getSuburbFromPostcode(selectedPostcode, selectedDeliverySuburb) || undefined;
     return {
@@ -771,7 +788,6 @@ const CheckoutPage: React.FC = () => {
       suburb: suburb,
       state: state || undefined,
       phone: recipientPhone || undefined,
-      message: hasMessage || undefined,
     };
   };
 
@@ -791,7 +807,7 @@ const CheckoutPage: React.FC = () => {
       recipient_name: name,
       recipient_phone: phone,
       recipient_address,
-      card_message: (cardMessage || recipientInfo?.message || '').trim() || null,
+      card_message: (cardMessage || '').trim() || null,
     };
   };
 
@@ -1217,7 +1233,6 @@ const CheckoutPage: React.FC = () => {
               address: address,
               state: state,
               postcode: selectedPostcode,
-              message: globalMessage.trim() || '',
             }
           : null;
         newOrder.customer_details = {
@@ -1257,7 +1272,7 @@ const CheckoutPage: React.FC = () => {
             Array.from({ length: item.quantity }, (_, index) => {
               const splitKey = getSplitItemKey(item, index);
               const splitShipment = splitShipments[splitKey];
-              const recipientInfo = buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]);
+              const recipientInfo = buildRecipientInfoFromSplit(splitShipment);
               const deliveryDetails = buildItemDeliveryDetails(
                 recipientInfo,
                 deliveryDate,
@@ -1283,7 +1298,7 @@ const CheckoutPage: React.FC = () => {
             const deliveryDetails = buildItemDeliveryDetails(
               recipientInfo,
               deliveryDate,
-              globalMessage,
+              item.message ?? '',
               selectedPostcode
             );
             return {
@@ -1486,7 +1501,6 @@ const CheckoutPage: React.FC = () => {
               address: address,
               state: state,
               postcode: selectedPostcode,
-              message: globalMessage.trim() || '',
             }
           : undefined,
         cartItems: cartItems,
@@ -1533,7 +1547,7 @@ const CheckoutPage: React.FC = () => {
                   imageUrl: getImageUrl(item),
                   selectedOptions: buildSelectedOptions(item),
                   selectedSize: item.selectedSize,
-                  recipientInfo: buildRecipientInfoFromSplit(splitShipment, itemMessages[splitKey]),
+                  recipientInfo: buildRecipientInfoFromSplit(splitShipment),
                   deliveryDate: deliveryDate,
                   cardMessage: itemMessages[splitKey] ?? '',
                   ...extras,
@@ -1551,7 +1565,7 @@ const CheckoutPage: React.FC = () => {
                 selectedSize: item.selectedSize,
                 recipientInfo: buildRecipientInfoFromMain(),
                 deliveryDate: deliveryDate,
-                cardMessage: globalMessage,
+                cardMessage: item.message ?? '',
                 ...extras,
               };
             });
@@ -1576,7 +1590,7 @@ const CheckoutPage: React.FC = () => {
             recipientState={primaryRecipient?.state}
             recipientPostcode={primaryRecipient?.postcode}
             recipientPhone={primaryRecipient?.phone}
-            giftMessage={globalMessage.trim() || undefined}
+            giftMessage={cartItems.length === 1 ? (cartItems[0].message?.trim() || undefined) : undefined}
           />
         );
 
@@ -2318,21 +2332,32 @@ const CheckoutPage: React.FC = () => {
                     </div>
                   )}
 
-                  {!isMultiToAddress && (
-                    <div className="rounded-xl border border-stone-200 bg-[#FDFBF7] p-5 shadow-sm">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-lg">🎁</span>
-                        <p className="text-base font-serif text-stone-700">
-                          Gift Card Message
-                        </p>
-                      </div>
-                      <textarea
-                        value={globalMessage}
-                        onChange={(e) => setGlobalMessage(e.target.value)}
-                        rows={3}
-                        placeholder="Write a lovely message here..."
-                        className="w-full bg-white/70 p-3 text-sm text-stone-700 rounded-lg border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-300 focus:border-stone-300 resize-none font-sans"
-                      />
+                  {!isMultiToAddress && cartItems.length > 0 && (
+                    <div className="space-y-4">
+                      {cartItems.map((item) => (
+                        <div
+                          key={`${item.id}-${item.selectedSize}`}
+                          className="rounded-xl border border-stone-200 bg-[#FDFBF7] p-5 shadow-sm"
+                        >
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-lg">🎁</span>
+                            <p className="text-base font-serif text-stone-700">
+                              {cartItems.length === 1
+                                ? 'Gift Card Message'
+                                : `Message for ${item.name}`}
+                            </p>
+                          </div>
+                          <textarea
+                            value={item.message ?? ''}
+                            onChange={(e) =>
+                              updateCartItemMessage(item.id, item.selectedSize, e.target.value)
+                            }
+                            rows={3}
+                            placeholder="Write a lovely message here..."
+                            className="w-full bg-white/70 p-3 text-sm text-stone-700 rounded-lg border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-300 focus:border-stone-300 resize-none font-sans"
+                          />
+                        </div>
+                      ))}
                     </div>
                   )}
 
