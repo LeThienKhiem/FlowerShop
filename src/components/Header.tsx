@@ -117,7 +117,7 @@ const Header: React.FC = () => {
     <>
       {/* Top Announcement Bar */}
       <div className="w-full bg-pink-100 py-2 text-center text-xs font-medium uppercase tracking-widest text-pink-900">
-        ✨✨ Place Your Order Today! 📦 ✨
+        🌸 Mother's Day is May 10 — Order Her Bouquet Today! 💐
       </div>
 
       {/* Main Navigation */}
