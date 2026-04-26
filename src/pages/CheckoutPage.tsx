@@ -1319,7 +1319,12 @@ const CheckoutPage: React.FC = () => {
       }
 
       const { error: updateError } = await supabase.functions.invoke('update-payment-intent', {
-        body: { paymentIntentId, orderId, email: (email ?? '').trim() || 'Guest' },
+        body: {
+          paymentIntentId,
+          orderId,
+          displayOrderId: String(getDisplayOrderId(orderId)),
+          email: (email ?? '').trim() || 'Guest',
+        },
       });
 
       if (updateError) {

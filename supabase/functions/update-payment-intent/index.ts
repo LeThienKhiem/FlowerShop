@@ -36,6 +36,7 @@ serve(async (req) => {
 
     const paymentIntentId = body.paymentIntentId;
     const orderId = body.orderId;
+    const displayOrderId = body.displayOrderId;
     const email = body.email;
 
     if (!paymentIntentId || typeof paymentIntentId !== 'string' || !paymentIntentId.startsWith('pi_')) {
@@ -52,7 +53,8 @@ serve(async (req) => {
       });
     }
 
-    const description = `Order #${orderId} - ${email || 'Guest'}`;
+    const descriptionOrderRef = displayOrderId != null && displayOrderId !== '' ? displayOrderId : orderId;
+    const description = `Order #${descriptionOrderRef} - ${email || 'Guest'}`;
     const metadata = {
       orderId: String(orderId),
       customerEmail: typeof email === 'string' && email ? email : 'N/A',
