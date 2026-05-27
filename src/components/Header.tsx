@@ -12,6 +12,13 @@ interface Category {
   slug?: string;
 }
 
+const ANNOUNCEMENTS = [
+  '🌸 Complimentary Local Delivery on All Bouquets — Order Today! 💐',
+  '🌿 Freshly Cut Seasonal Blooms — Handcrafted Daily 🌸',
+  '✨ New Arrivals Just Bloomed — Explore the Collection 💐',
+  '💐 Order Before 2PM for Same-Day Delivery 🌸',
+];
+
 const Header: React.FC = () => {
   const { cartCount } = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -20,6 +27,15 @@ const Header: React.FC = () => {
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [showDesktopShopDropdown, setShowDesktopShopDropdown] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+
+  // Rotate announcement bar messages
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnnouncementIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Toggle mobile menu
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -117,7 +133,9 @@ const Header: React.FC = () => {
     <>
       {/* Top Announcement Bar */}
       <div className="w-full bg-pink-100 py-2 text-center text-xs font-medium uppercase tracking-widest text-pink-900">
-        🌸 Mother's Day is May 10 — Order Her Bouquet Today! 💐
+        <span key={announcementIndex} className="inline-block animate-[fadeIn_0.6s_ease]">
+          {ANNOUNCEMENTS[announcementIndex]}
+        </span>
       </div>
 
       {/* Main Navigation */}
